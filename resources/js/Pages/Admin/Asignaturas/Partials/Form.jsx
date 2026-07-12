@@ -1,0 +1,75 @@
+import InputError from '@/Components/InputError';
+import InputLabel from '@/Components/InputLabel';
+import PrimaryButton from '@/Components/PrimaryButton';
+import SelectInput from '@/Components/SelectInput';
+import TextInput from '@/Components/TextInput';
+import { Link } from '@inertiajs/react';
+
+export default function Form({ data, setData, errors, processing, onSubmit, cancelHref, carreras }) {
+    return (
+        <form onSubmit={onSubmit} className="space-y-6">
+            <div>
+                <InputLabel htmlFor="carrera_id" value="Carrera" />
+                <SelectInput
+                    id="carrera_id"
+                    className="mt-1 block w-full"
+                    value={data.carrera_id}
+                    onChange={(e) => setData('carrera_id', e.target.value)}
+                >
+                    <option value="">Selecciona una carrera</option>
+                    {carreras.map((carrera) => (
+                        <option key={carrera.id} value={carrera.id}>
+                            {carrera.nombre}
+                        </option>
+                    ))}
+                </SelectInput>
+                <InputError message={errors.carrera_id} className="mt-2" />
+            </div>
+
+            <div>
+                <InputLabel htmlFor="nombre" value="Nombre" />
+                <TextInput
+                    id="nombre"
+                    className="mt-1 block w-full"
+                    value={data.nombre}
+                    onChange={(e) => setData('nombre', e.target.value)}
+                />
+                <InputError message={errors.nombre} className="mt-2" />
+            </div>
+
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                <div>
+                    <InputLabel htmlFor="clave" value="Clave" />
+                    <TextInput
+                        id="clave"
+                        className="mt-1 block w-full"
+                        placeholder="PROG1"
+                        value={data.clave ?? ''}
+                        onChange={(e) => setData('clave', e.target.value.toUpperCase())}
+                    />
+                    <InputError message={errors.clave} className="mt-2" />
+                </div>
+
+                <div>
+                    <InputLabel htmlFor="horas_semana" value="Horas por semana (opcional)" />
+                    <TextInput
+                        id="horas_semana"
+                        type="number"
+                        min="1"
+                        className="mt-1 block w-full"
+                        value={data.horas_semana ?? ''}
+                        onChange={(e) => setData('horas_semana', e.target.value)}
+                    />
+                    <InputError message={errors.horas_semana} className="mt-2" />
+                </div>
+            </div>
+
+            <div className="flex items-center gap-4">
+                <PrimaryButton disabled={processing}>Guardar</PrimaryButton>
+                <Link href={cancelHref} className="text-sm text-slate-600 underline dark:text-slate-400 dark:hover:text-slate-200">
+                    Cancelar
+                </Link>
+            </div>
+        </form>
+    );
+}

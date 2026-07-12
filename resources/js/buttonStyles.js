@@ -1,0 +1,6 @@
+// Clases compartidas para elementos que deben verse como botones pero no son
+// <button> (enlaces de descarga, Link de Inertia usados como acción secundaria).
+export const secondaryLinkClasses =
+    'inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition duration-150 ease-in-out hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 dark:focus:ring-offset-slate-900';
+
+export const plainLinkClasses = 'text-sm font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200';
