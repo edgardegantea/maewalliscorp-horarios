@@ -96,6 +96,7 @@ export default function Index({ periodos, carreras, periodoSeleccionado, carrera
 
             <div className="space-y-6">
                 <PageHeader
+                    breadcrumbs={[{ label: 'Dashboard', href: route('dashboard') }, { label: 'Cargas académicas' }]}
                     title="Cargas académicas"
                     description="Organizadas por periodo escolar, carrera y grupo."
                 />

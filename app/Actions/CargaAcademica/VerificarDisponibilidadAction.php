@@ -2,6 +2,7 @@
 
 namespace App\Actions\CargaAcademica;
 
+use App\Models\Asignatura;
 use App\Models\CargaAcademica;
 use App\Models\DisponibilidadDocente;
 
@@ -14,6 +15,7 @@ class VerificarDisponibilidadAction
      *    chocar entre carreras distintas).
      *  - Cae completa dentro de un bloque de disponibilidad del docente ese día
      *    (regla de las 8 horas: la disponibilidad ya está acotada a un rango <= 8h).
+     *  - No excede las horas semanales declaradas de la asignatura para ese grupo.
      */
     public function ejecutar(
         int $periodoEscolarId,
@@ -24,6 +26,7 @@ class VerificarDisponibilidadAction
         ?int $aulaId = null,
         ?int $grupoId = null,
         ?int $ignorarCargaId = null,
+        ?int $asignaturaId = null,
     ): ResultadoVerificacion {
         $conflictos = [];
 
@@ -46,9 +49,56 @@ class VerificarDisponibilidadAction
             }
         }
 
+        if ($asignaturaId !== null && $grupoId !== null) {
+            $mensajeHoras = $this->excedeHorasSemana($asignaturaId, $grupoId, $periodoEscolarId, $horaInicio, $horaFin, $ignorarCargaId);
+            if ($mensajeHoras !== null) {
+                $conflictos[] = ['tipo' => 'horas_semana', 'mensaje' => $mensajeHoras];
+            }
+        }
+
         [$dentro, $mensajeDisp] = $this->cabeEnDisponibilidad($docenteId, $periodoEscolarId, $diaSemana, $horaInicio, $horaFin);
 
         return new ResultadoVerificacion($conflictos, $dentro, $mensajeDisp);
+    }
+
+    /**
+     * Suma las horas ya asignadas de la asignatura para ese grupo en el periodo
+     * (en todos los días) y verifica que, al agregar el nuevo bloque, no se
+     * exceda el límite de horas_semana declarado en la asignatura.
+     */
+    private function excedeHorasSemana(
+        int $asignaturaId,
+        int $grupoId,
+        int $periodoEscolarId,
+        string $horaInicio,
+        string $horaFin,
+        ?int $ignorarCargaId,
+    ): ?string {
+        $asignatura = Asignatura::find($asignaturaId);
+
+        if (! $asignatura || $asignatura->horas_semana === null) {
+            return null;
+        }
+
+        $minutosExistentes = CargaAcademica::query()
+            ->where('periodo_escolar_id', $periodoEscolarId)
+            ->where('asignatura_id', $asignaturaId)
+            ->where('grupo_id', $grupoId)
+            ->when($ignorarCargaId, fn ($q) => $q->whereKeyNot($ignorarCargaId))
+            ->get(['hora_inicio', 'hora_fin'])
+            ->sum(fn (CargaAcademica $c) => $this->aMinutos($c->hora_fin) - $this->aMinutos($c->hora_inicio));
+
+        $minutosNuevos = $this->aMinutos($horaFin) - $this->aMinutos($horaInicio);
+        $totalMinutos = $minutosExistentes + $minutosNuevos;
+        $limiteMinutos = $asignatura->horas_semana * 60;
+
+        if ($totalMinutos > $limiteMinutos) {
+            $totalHoras = rtrim(rtrim(number_format($totalMinutos / 60, 2), '0'), '.');
+
+            return "\"{$asignatura->nombre}\" ya tendría {$totalHoras}h asignadas a este grupo esta semana (límite: {$asignatura->horas_semana}h).";
+        }
+
+        return null;
     }
 
     private function buscarConflicto(

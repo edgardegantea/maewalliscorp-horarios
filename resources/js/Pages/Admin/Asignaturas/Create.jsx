@@ -22,7 +22,14 @@ export default function Create({ carreras }) {
             <Head title="Nueva asignatura" />
 
             <div className="max-w-2xl space-y-6">
-                <PageHeader title="Nueva asignatura" />
+                <PageHeader
+                    breadcrumbs={[
+                        { label: 'Dashboard', href: route('dashboard') },
+                        { label: 'Asignaturas', href: route('admin.asignaturas.index') },
+                        { label: 'Nueva asignatura' },
+                    ]}
+                    title="Nueva asignatura"
+                />
                 <Card>
                     <Form
                         data={data}

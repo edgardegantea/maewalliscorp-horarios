@@ -65,6 +65,7 @@ export default function SlotModal({
                     hora_fin: data.hora_fin,
                     aula_id: data.aula_id || null,
                     grupo_id: data.grupo_id || null,
+                    asignatura_id: data.asignatura_id || null,
                 })
                 .then((res) => {
                     setVerificacion(res.data.resultado);
@@ -77,7 +78,7 @@ export default function SlotModal({
 
         return () => clearTimeout(debounce.current);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [show, data.aula_id, data.grupo_id, data.hora_inicio, data.hora_fin, data.dia_semana]);
+    }, [show, data.aula_id, data.grupo_id, data.asignatura_id, data.hora_inicio, data.hora_fin, data.dia_semana]);
 
     const guardar = (e) => {
         e.preventDefault();
@@ -91,7 +92,7 @@ export default function SlotModal({
         return null;
     }
 
-    const conflictoHorario = verificacion && !verificacion.dentro_de_disponibilidad;
+    const mensajesVerificacion = verificacion?.mensajes ?? [];
 
     return (
         <Modal show={show} onClose={() => onClose(false)}>
@@ -101,9 +102,13 @@ export default function SlotModal({
                     {DIAS[seleccion.dia_semana]} · {seleccion.hora_inicio} a {seleccion.hora_fin}
                 </p>
 
-                {conflictoHorario && (
+                {mensajesVerificacion.length > 0 && (
                     <div className="mt-3 rounded-md bg-red-50 p-3 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-400">
-                        {verificacion.mensaje_disponibilidad}
+                        <ul className="list-disc space-y-1 pl-4">
+                            {mensajesVerificacion.map((mensaje) => (
+                                <li key={mensaje}>{mensaje}</li>
+                            ))}
+                        </ul>
                     </div>
                 )}
 
@@ -119,6 +124,7 @@ export default function SlotModal({
                             {asignaturas.map((a) => (
                                 <option key={a.id} value={a.id}>
                                     {a.nombre}
+                                    {a.horas_semana ? ` (${a.horas_semana}h/semana)` : ''}
                                 </option>
                             ))}
                         </SelectInput>
@@ -179,7 +185,13 @@ export default function SlotModal({
                         Cancelar
                     </SecondaryButton>
                     <PrimaryButton
-                        disabled={processing || !data.asignatura_id || !data.grupo_id || !data.aula_id}
+                        disabled={
+                            processing ||
+                            !data.asignatura_id ||
+                            !data.grupo_id ||
+                            !data.aula_id ||
+                            (verificacion && !verificacion.valido)
+                        }
                     >
                         Guardar carga
                     </PrimaryButton>

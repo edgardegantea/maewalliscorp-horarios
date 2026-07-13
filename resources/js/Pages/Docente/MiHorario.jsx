@@ -31,7 +31,11 @@ export default function MiHorario({ periodo, periodos, slots, cargas }) {
             <Head title="Mi horario" />
 
             <div className="space-y-6">
-                <PageHeader title="Mi horario" description="Tu carga académica asignada para el periodo seleccionado." />
+                <PageHeader
+                    breadcrumbs={[{ label: 'Dashboard', href: route('dashboard') }, { label: 'Mi horario' }]}
+                    title="Mi horario"
+                    description="Tu carga académica asignada para el periodo seleccionado."
+                />
 
                 {periodos.length > 0 && (
                     <Card className="max-w-xs">

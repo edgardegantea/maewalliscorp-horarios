@@ -19,6 +19,7 @@ export default function Index({ asignaturas }) {
 
             <div className="space-y-6">
                 <PageHeader
+                    breadcrumbs={[{ label: 'Dashboard', href: route('dashboard') }, { label: 'Asignaturas' }]}
                     title="Asignaturas"
                     description="Materias que se imparten dentro de cada carrera."
                     actions={

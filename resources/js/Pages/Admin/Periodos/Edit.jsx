@@ -22,7 +22,14 @@ export default function Edit({ periodo }) {
             <Head title="Editar periodo escolar" />
 
             <div className="max-w-2xl space-y-6">
-                <PageHeader title="Editar periodo escolar" />
+                <PageHeader
+                    breadcrumbs={[
+                        { label: 'Dashboard', href: route('dashboard') },
+                        { label: 'Periodos escolares', href: route('admin.periodos.index') },
+                        { label: periodo.nombre },
+                    ]}
+                    title="Editar periodo escolar"
+                />
                 <Card>
                     <Form
                         data={data}

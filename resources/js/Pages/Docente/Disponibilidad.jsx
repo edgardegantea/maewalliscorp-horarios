@@ -15,6 +15,7 @@ export default function Disponibilidad({ periodo, periodos, bloques }) {
 
             <div className="max-w-3xl space-y-6">
                 <PageHeader
+                    breadcrumbs={[{ label: 'Dashboard', href: route('dashboard') }, { label: 'Mi disponibilidad' }]}
                     title="Mi disponibilidad"
                     description="Registra los horarios en los que puedes impartir clases."
                 />

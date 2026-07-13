@@ -22,7 +22,14 @@ export default function Create() {
             <Head title="Nueva aula" />
 
             <div className="max-w-2xl space-y-6">
-                <PageHeader title="Nueva aula" />
+                <PageHeader
+                    breadcrumbs={[
+                        { label: 'Dashboard', href: route('dashboard') },
+                        { label: 'Aulas', href: route('admin.aulas.index') },
+                        { label: 'Nueva aula' },
+                    ]}
+                    title="Nueva aula"
+                />
                 <Card>
                     <Form
                         data={data}

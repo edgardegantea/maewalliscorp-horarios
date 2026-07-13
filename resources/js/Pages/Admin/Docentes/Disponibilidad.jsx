@@ -15,6 +15,12 @@ export default function Disponibilidad({ docente, periodo, periodos, bloques }) 
 
             <div className="max-w-3xl space-y-6">
                 <PageHeader
+                    breadcrumbs={[
+                        { label: 'Dashboard', href: route('dashboard') },
+                        { label: 'Docentes', href: route('admin.docentes.index') },
+                        { label: docente.user.name, href: route('admin.docentes.edit', docente.id) },
+                        { label: 'Disponibilidad' },
+                    ]}
                     title={`Disponibilidad de ${docente.user.name}`}
                     actions={
                         <Link

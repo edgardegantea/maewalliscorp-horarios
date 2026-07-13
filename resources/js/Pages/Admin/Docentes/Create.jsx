@@ -24,7 +24,14 @@ export default function Create() {
             <Head title="Nuevo docente" />
 
             <div className="max-w-2xl space-y-6">
-                <PageHeader title="Nuevo docente" />
+                <PageHeader
+                    breadcrumbs={[
+                        { label: 'Dashboard', href: route('dashboard') },
+                        { label: 'Docentes', href: route('admin.docentes.index') },
+                        { label: 'Nuevo docente' },
+                    ]}
+                    title="Nuevo docente"
+                />
                 <Card>
                     <Form
                         data={data}

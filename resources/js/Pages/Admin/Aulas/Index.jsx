@@ -20,6 +20,7 @@ export default function Index({ aulas }) {
 
             <div className="space-y-6">
                 <PageHeader
+                    breadcrumbs={[{ label: 'Dashboard', href: route('dashboard') }, { label: 'Aulas' }]}
                     title="Aulas"
                     description="Espacios físicos disponibles para impartir clases."
                     actions={

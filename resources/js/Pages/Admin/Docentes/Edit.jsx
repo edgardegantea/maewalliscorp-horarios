@@ -27,7 +27,14 @@ export default function Edit({ docente, carreras, periodos }) {
             <Head title="Editar docente" />
 
             <div className="max-w-2xl space-y-6">
-                <PageHeader title="Editar docente" />
+                <PageHeader
+                    breadcrumbs={[
+                        { label: 'Dashboard', href: route('dashboard') },
+                        { label: 'Docentes', href: route('admin.docentes.index') },
+                        { label: docente.user.name },
+                    ]}
+                    title="Editar docente"
+                />
                 <Card>
                     <Form
                         data={data}

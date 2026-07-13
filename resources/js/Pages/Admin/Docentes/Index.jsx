@@ -19,6 +19,7 @@ export default function Index({ docentes }) {
 
             <div className="space-y-6">
                 <PageHeader
+                    breadcrumbs={[{ label: 'Dashboard', href: route('dashboard') }, { label: 'Docentes' }]}
                     title="Docentes"
                     description="Cuentas de acceso y perfil de los docentes de la institución."
                     actions={

@@ -60,6 +60,13 @@ export default function Builder({ periodo, carrera, docentes, asignaturas, grupo
 
             <div className="space-y-6">
                 <PageHeader
+                    breadcrumbs={[
+                        { label: 'Dashboard', href: route('dashboard') },
+                        { label: 'Cargas académicas', href: route('admin.cargas.index') },
+                        { label: periodo.nombre, href: route('admin.cargas.index', { periodo: periodo.id }) },
+                        { label: carrera.nombre, href: route('admin.cargas.index', { periodo: periodo.id, carrera: carrera.id }) },
+                        { label: 'Nueva carga académica' },
+                    ]}
                     title="Nueva carga académica"
                     description={`${carrera.nombre} · ${periodo.nombre}`}
                     actions={

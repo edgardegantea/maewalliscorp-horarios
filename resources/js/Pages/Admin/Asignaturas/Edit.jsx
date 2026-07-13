@@ -22,7 +22,14 @@ export default function Edit({ asignatura, carreras }) {
             <Head title="Editar asignatura" />
 
             <div className="max-w-2xl space-y-6">
-                <PageHeader title="Editar asignatura" />
+                <PageHeader
+                    breadcrumbs={[
+                        { label: 'Dashboard', href: route('dashboard') },
+                        { label: 'Asignaturas', href: route('admin.asignaturas.index') },
+                        { label: asignatura.nombre },
+                    ]}
+                    title="Editar asignatura"
+                />
                 <Card>
                     <Form
                         data={data}

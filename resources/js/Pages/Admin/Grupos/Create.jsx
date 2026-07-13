@@ -24,7 +24,14 @@ export default function Create({ carreras, periodos }) {
             <Head title="Nuevo grupo" />
 
             <div className="max-w-2xl space-y-6">
-                <PageHeader title="Nuevo grupo" />
+                <PageHeader
+                    breadcrumbs={[
+                        { label: 'Dashboard', href: route('dashboard') },
+                        { label: 'Grupos', href: route('admin.grupos.index') },
+                        { label: 'Nuevo grupo' },
+                    ]}
+                    title="Nuevo grupo"
+                />
                 <Card>
                     <Form
                         data={data}

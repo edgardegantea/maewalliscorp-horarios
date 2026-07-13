@@ -24,7 +24,14 @@ export default function Edit({ grupo, carreras, periodos }) {
             <Head title="Editar grupo" />
 
             <div className="max-w-2xl space-y-6">
-                <PageHeader title="Editar grupo" />
+                <PageHeader
+                    breadcrumbs={[
+                        { label: 'Dashboard', href: route('dashboard') },
+                        { label: 'Grupos', href: route('admin.grupos.index') },
+                        { label: grupo.nombre },
+                    ]}
+                    title="Editar grupo"
+                />
                 <Card>
                     <Form
                         data={data}

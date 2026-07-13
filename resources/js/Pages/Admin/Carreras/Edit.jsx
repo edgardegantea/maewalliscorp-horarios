@@ -21,7 +21,14 @@ export default function Edit({ carrera }) {
             <Head title="Editar carrera" />
 
             <div className="max-w-2xl space-y-6">
-                <PageHeader title="Editar carrera" />
+                <PageHeader
+                    breadcrumbs={[
+                        { label: 'Dashboard', href: route('dashboard') },
+                        { label: 'Carreras', href: route('admin.carreras.index') },
+                        { label: carrera.nombre },
+                    ]}
+                    title="Editar carrera"
+                />
                 <Card>
                     <Form
                         data={data}

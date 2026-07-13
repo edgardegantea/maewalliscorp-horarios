@@ -36,6 +36,7 @@ class GuardarCargaAcademicaAction
                 $datos['hora_fin'],
                 (int) $datos['aula_id'],
                 (int) $datos['grupo_id'],
+                asignaturaId: (int) $datos['asignatura_id'],
             );
 
             if (! $resultado->esValido()) {

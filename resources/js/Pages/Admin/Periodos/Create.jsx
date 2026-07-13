@@ -22,7 +22,14 @@ export default function Create() {
             <Head title="Nuevo periodo escolar" />
 
             <div className="max-w-2xl space-y-6">
-                <PageHeader title="Nuevo periodo escolar" />
+                <PageHeader
+                    breadcrumbs={[
+                        { label: 'Dashboard', href: route('dashboard') },
+                        { label: 'Periodos escolares', href: route('admin.periodos.index') },
+                        { label: 'Nuevo periodo' },
+                    ]}
+                    title="Nuevo periodo escolar"
+                />
                 <Card>
                     <Form
                         data={data}

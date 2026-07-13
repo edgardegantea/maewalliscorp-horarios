@@ -20,6 +20,7 @@ export default function Index({ carreras }) {
 
             <div className="space-y-6">
                 <PageHeader
+                    breadcrumbs={[{ label: 'Dashboard', href: route('dashboard') }, { label: 'Carreras' }]}
                     title="Carreras"
                     description="Programas académicos ofrecidos por la institución."
                     actions={

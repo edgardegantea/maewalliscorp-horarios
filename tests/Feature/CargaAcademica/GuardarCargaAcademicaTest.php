@@ -160,6 +160,37 @@ it('acepta una clase dentro de un bloque de un turno partido', function () {
     expect(CargaAcademica::count())->toBe(1);
 });
 
+it('rechaza exceder las horas semanales declaradas de la asignatura para un grupo', function () {
+    $e = escenario();
+    $e['asignatura']->update(['horas_semana' => 2]);
+    $accion = app(GuardarCargaAcademicaAction::class);
+
+    // Primera clase: 1h (dentro del límite de 2h).
+    $accion->ejecutar(datosCarga($e, ['hora_inicio' => '08:00', 'hora_fin' => '09:00']), $e['admin']->id);
+
+    // Segunda clase: 1h más el mismo día en otro horario suma 2h, todavía dentro del límite.
+    $accion->ejecutar(datosCarga($e, ['hora_inicio' => '09:00', 'hora_fin' => '10:00']), $e['admin']->id);
+
+    expect(CargaAcademica::count())->toBe(2);
+
+    // Tercera clase: excede las 2h semanales de la asignatura para este grupo.
+    $accion->ejecutar(datosCarga($e, ['hora_inicio' => '10:00', 'hora_fin' => '11:00']), $e['admin']->id);
+})->throws(ValidationException::class);
+
+it('permite otro grupo con la misma asignatura sin verse afectado por el límite de otro grupo', function () {
+    $e = escenario();
+    $e['asignatura']->update(['horas_semana' => 1]);
+    $accion = app(GuardarCargaAcademicaAction::class);
+
+    $accion->ejecutar(datosCarga($e, ['hora_inicio' => '08:00', 'hora_fin' => '09:00']), $e['admin']->id);
+
+    $grupoB = Grupo::create(['carrera_id' => $e['carrera']->id, 'periodo_escolar_id' => $e['periodo']->id, 'nombre' => '1B', 'matricula' => 20]);
+
+    $accion->ejecutar(datosCarga($e, ['grupo_id' => $grupoB->id, 'hora_inicio' => '09:00', 'hora_fin' => '10:00']), $e['admin']->id);
+
+    expect(CargaAcademica::count())->toBe(2);
+});
+
 it('la verificación detecta que un aula específica queda libre en horario contiguo', function () {
     $e = escenario();
     app(GuardarCargaAcademicaAction::class)->ejecutar(datosCarga($e, ['hora_inicio' => '09:00', 'hora_fin' => '10:00']), $e['admin']->id);

@@ -1,16 +1,20 @@
 <?php
 
 use App\Exports\ConcentradoGeneralExport;
+use App\Mail\ConcentradoDescargado;
 use App\Models\Asignatura;
 use App\Models\Aula;
-use App\Models\Carrera;
 use App\Models\CargaAcademica;
+use App\Models\Carrera;
 use App\Models\Docente;
 use App\Models\Grupo;
 use App\Models\PeriodoEscolar;
 use App\Models\User;
+use Illuminate\Support\Facades\Mail;
 
-it('exporta el concentrado a Excel como descarga', function () {
+it('exporta el concentrado a Excel como descarga y notifica por correo a quien lo descargó', function () {
+    Mail::fake();
+
     $admin = User::factory()->admin()->create();
     $periodo = PeriodoEscolar::create(['nombre' => 'P', 'fecha_inicio' => '2026-01-01', 'fecha_fin' => '2026-06-30', 'activo' => true]);
     $carrera = Carrera::create(['nombre' => 'Carrera A', 'clave' => 'CA']);
@@ -22,6 +26,22 @@ it('exporta el concentrado a Excel como descarga', function () {
 
     $respuesta->assertOk();
     expect($respuesta->headers->get('content-disposition'))->toContain('.xlsx');
+
+    Mail::assertSent(ConcentradoDescargado::class, function ($mail) use ($admin, $carrera) {
+        return $mail->hasTo($admin->email) && $mail->carrera->is($carrera);
+    });
+});
+
+it('no interrumpe la descarga si el envío de la notificación falla', function () {
+    Mail::shouldReceive('to')->andThrow(new Exception('SMTP caído'));
+
+    $admin = User::factory()->admin()->create();
+    $periodo = PeriodoEscolar::create(['nombre' => 'P', 'fecha_inicio' => '2026-01-01', 'fecha_fin' => '2026-06-30', 'activo' => true]);
+    $carrera = Carrera::create(['nombre' => 'Carrera A', 'clave' => 'CA']);
+
+    $this->actingAs($admin)
+        ->get(route('admin.concentrado.export', ['periodo' => $periodo->id, 'carrera' => $carrera->id]))
+        ->assertOk();
 });
 
 it('un docente no puede exportar el concentrado', function () {
@@ -34,7 +54,9 @@ it('un docente no puede exportar el concentrado', function () {
         ->assertForbidden();
 });
 
-it('exporta el concentrado general de todas las carreras como descarga', function () {
+it('exporta el concentrado general de todas las carreras como descarga y notifica sin carrera específica', function () {
+    Mail::fake();
+
     $admin = User::factory()->admin()->create();
     $periodo = PeriodoEscolar::create(['nombre' => 'P', 'fecha_inicio' => '2026-01-01', 'fecha_fin' => '2026-06-30', 'activo' => true]);
 
@@ -61,6 +83,10 @@ it('exporta el concentrado general de todas las carreras como descarga', functio
 
     $respuesta->assertOk();
     expect($respuesta->headers->get('content-disposition'))->toContain('.xlsx');
+
+    Mail::assertSent(ConcentradoDescargado::class, function ($mail) use ($admin) {
+        return $mail->hasTo($admin->email) && $mail->carrera === null;
+    });
 });
 
 it('un docente no puede exportar el concentrado general', function () {

@@ -44,7 +44,7 @@ class CargaAcademicaBuilderController extends Controller
             'periodo' => $periodo,
             'carrera' => $carrera,
             'docentes' => $docentes,
-            'asignaturas' => Asignatura::where('carrera_id', $carrera->id)->orderBy('nombre')->get(['id', 'nombre']),
+            'asignaturas' => Asignatura::where('carrera_id', $carrera->id)->orderBy('nombre')->get(['id', 'nombre', 'horas_semana']),
             'grupos' => Grupo::where('carrera_id', $carrera->id)->where('periodo_escolar_id', $periodo->id)->orderBy('nombre')->get(['id', 'nombre', 'matricula']),
             'aulas' => Aula::where('activo', true)->orderBy('nombre')->get(['id', 'nombre', 'capacidad']),
             'slots' => Horario::slots(),
@@ -143,6 +143,7 @@ class CargaAcademicaBuilderController extends Controller
             'aula_id' => ['nullable', 'exists:aulas,id'],
             'grupo_id' => ['nullable', 'exists:grupos,id'],
             'ignorar_carga_id' => ['nullable', 'exists:cargas_academicas,id'],
+            'asignatura_id' => ['nullable', 'exists:asignaturas,id'],
         ]);
 
         $resultado = $accion->ejecutar(
@@ -154,6 +155,7 @@ class CargaAcademicaBuilderController extends Controller
             isset($datos['aula_id']) ? (int) $datos['aula_id'] : null,
             isset($datos['grupo_id']) ? (int) $datos['grupo_id'] : null,
             isset($datos['ignorar_carga_id']) ? (int) $datos['ignorar_carga_id'] : null,
+            isset($datos['asignatura_id']) ? (int) $datos['asignatura_id'] : null,
         );
 
         return response()->json([

@@ -20,6 +20,7 @@ export default function Index({ periodos }) {
 
             <div className="space-y-6">
                 <PageHeader
+                    breadcrumbs={[{ label: 'Dashboard', href: route('dashboard') }, { label: 'Periodos escolares' }]}
                     title="Periodos escolares"
                     description="Administra los ciclos escolares en los que se organizan las cargas académicas."
                     actions={

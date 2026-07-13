@@ -22,7 +22,14 @@ export default function Edit({ aula }) {
             <Head title="Editar aula" />
 
             <div className="max-w-2xl space-y-6">
-                <PageHeader title="Editar aula" />
+                <PageHeader
+                    breadcrumbs={[
+                        { label: 'Dashboard', href: route('dashboard') },
+                        { label: 'Aulas', href: route('admin.aulas.index') },
+                        { label: aula.nombre },
+                    ]}
+                    title="Editar aula"
+                />
                 <Card>
                     <Form
                         data={data}

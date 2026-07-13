@@ -19,6 +19,7 @@ export default function Index({ grupos }) {
 
             <div className="space-y-6">
                 <PageHeader
+                    breadcrumbs={[{ label: 'Dashboard', href: route('dashboard') }, { label: 'Grupos' }]}
                     title="Grupos"
                     description="Grupos de alumnos por carrera y periodo escolar."
                     actions={
