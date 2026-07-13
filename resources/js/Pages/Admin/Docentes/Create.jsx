@@ -23,7 +23,7 @@ export default function Create() {
         <AuthenticatedLayout header={<h2 className="text-base font-semibold text-slate-900 dark:text-white">Nuevo docente</h2>}>
             <Head title="Nuevo docente" />
 
-            <div className="max-w-2xl space-y-6">
+            <div className="space-y-6">
                 <PageHeader
                     breadcrumbs={[
                         { label: 'Dashboard', href: route('dashboard') },

@@ -22,11 +22,35 @@ class GrupoController extends Controller
     {
         $carreraIds = $this->carrerasVisibles($request)->pluck('id');
 
+        $periodoId = $request->integer('periodo') ?: null;
+        $carreraId = $request->integer('carrera') ?: null;
+        $semestre = $request->integer('semestre') ?: null;
+        $modalidad = $request->string('modalidad')->toString() ?: null;
+
+        $grupos = Grupo::with(['carrera', 'periodoEscolar'])
+            ->whereIn('carrera_id', $carreraIds)
+            ->when($periodoId, fn ($q) => $q->where('periodo_escolar_id', $periodoId))
+            ->when($carreraId, fn ($q) => $q->where('carrera_id', $carreraId))
+            ->when($semestre, fn ($q) => $q->where('semestre', $semestre))
+            ->when($modalidad, fn ($q) => $q->where('modalidad', $modalidad))
+            ->join('carreras', 'carreras.id', '=', 'grupos.carrera_id')
+            ->orderBy('carreras.nombre')
+            ->orderByRaw('grupos.semestre IS NULL, grupos.semestre')
+            ->orderBy('grupos.nombre')
+            ->select('grupos.*')
+            ->get();
+
         return Inertia::render('Admin/Grupos/Index', [
-            'grupos' => Grupo::with(['carrera', 'periodoEscolar'])
-                ->whereIn('carrera_id', $carreraIds)
-                ->orderByDesc('id')
-                ->get(),
+            'grupos' => $grupos,
+            'periodos' => PeriodoEscolar::orderByDesc('fecha_inicio')->get(),
+            'carreras' => $this->carrerasVisibles($request)->orderBy('nombre')->get(),
+            'modalidades' => Grupo::whereIn('carrera_id', $carreraIds)->distinct()->orderBy('modalidad')->pluck('modalidad'),
+            'filtros' => [
+                'periodo' => $periodoId,
+                'carrera' => $carreraId,
+                'semestre' => $semestre,
+                'modalidad' => $modalidad,
+            ],
         ]);
     }
 

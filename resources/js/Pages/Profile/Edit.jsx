@@ -15,7 +15,7 @@ export default function Edit({ mustVerifyEmail, status, twoFactorEnabled, twoFac
         <AuthenticatedLayout header={<h2 className="text-base font-semibold text-slate-900 dark:text-white">Mi perfil</h2>}>
             <Head title="Mi perfil" />
 
-            <div className="max-w-2xl space-y-6">
+            <div className="space-y-6">
                 <PageHeader title="Mi perfil" description="Actualiza tu información de cuenta y contraseña." />
 
                 <Card>

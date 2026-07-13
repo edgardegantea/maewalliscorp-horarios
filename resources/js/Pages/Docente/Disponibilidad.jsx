@@ -13,7 +13,7 @@ export default function Disponibilidad({ periodo, periodos, bloques, diasNoLabor
         <AuthenticatedLayout header={<h2 className="text-base font-semibold text-slate-900 dark:text-white">Mi disponibilidad</h2>}>
             <Head title="Mi disponibilidad" />
 
-            <div className="max-w-3xl space-y-6">
+            <div className="space-y-6">
                 <PageHeader
                     breadcrumbs={[{ label: 'Dashboard', href: route('dashboard') }, { label: 'Mi disponibilidad' }]}
                     title="Mi disponibilidad"

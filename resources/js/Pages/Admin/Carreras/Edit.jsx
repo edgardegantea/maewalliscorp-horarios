@@ -21,7 +21,7 @@ export default function Edit({ carrera, coordinadoresDisponibles }) {
         <AuthenticatedLayout header={<h2 className="text-base font-semibold text-slate-900 dark:text-white">Editar carrera</h2>}>
             <Head title="Editar carrera" />
 
-            <div className="max-w-2xl space-y-6">
+            <div className="space-y-6">
                 <PageHeader
                     breadcrumbs={[
                         { label: 'Dashboard', href: route('dashboard') },
