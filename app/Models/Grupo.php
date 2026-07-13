@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
-#[Fillable(['carrera_id', 'periodo_escolar_id', 'nombre', 'semestre', 'matricula', 'modalidad', 'hora_inicio', 'hora_fin'])]
+#[Fillable(['carrera_id', 'periodo_escolar_id', 'nombre', 'semestre', 'matricula', 'modalidad', 'hora_inicio', 'hora_fin', 'fecha_corte_modulo'])]
 class Grupo extends Model
 {
     /** @use HasFactory<GrupoFactory> */

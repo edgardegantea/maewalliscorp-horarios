@@ -17,10 +17,23 @@ class PeriodoEscolarController extends Controller
 {
     use ImportsCsv;
 
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        $busqueda = $request->string('q')->toString() ?: null;
+        $activo = $request->query('activo');
+        $activo = $activo === null || $activo === '' ? null : (bool) $activo;
+
+        $periodos = PeriodoEscolar::when($busqueda, fn ($q) => $q->where('nombre', 'ilike', "%{$busqueda}%"))
+            ->when($activo !== null, fn ($q) => $q->where('activo', $activo))
+            ->orderByDesc('fecha_inicio')
+            ->get();
+
         return Inertia::render('Admin/Periodos/Index', [
-            'periodos' => PeriodoEscolar::orderByDesc('fecha_inicio')->get(),
+            'periodos' => $periodos,
+            'filtros' => [
+                'q' => $busqueda,
+                'activo' => $request->query('activo') ?: null,
+            ],
         ]);
     }
 

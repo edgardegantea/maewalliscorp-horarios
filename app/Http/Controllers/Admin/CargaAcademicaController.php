@@ -36,9 +36,15 @@ class CargaAcademicaController extends Controller
         $grupos = collect();
 
         if ($periodoId && $carreraId) {
+            // Incluye cargas cuya carrera "dueña" es otra pero tienen un grupo de
+            // esta carrera combinado (clase compartida entre carreras), para que
+            // sea visible también desde el listado de esta carrera.
             $cargas = CargaAcademica::with(['docente.user', 'asignatura', 'grupos', 'aula'])
                 ->where('periodo_escolar_id', $periodoId)
-                ->where('carrera_id', $carreraId)
+                ->where(function ($query) use ($carreraId) {
+                    $query->where('carrera_id', $carreraId)
+                        ->orWhereHas('grupos', fn ($q) => $q->where('grupos.carrera_id', $carreraId));
+                })
                 ->orderBy('dia_semana')
                 ->orderBy('hora_inicio')
                 ->get();

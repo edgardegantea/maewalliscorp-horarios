@@ -163,7 +163,14 @@ export default function Index({ grupos, periodos, carreras, modalidades, filtros
                                     <TD>{grupo.periodo_escolar.nombre}</TD>
                                     <TD>{grupo.semestre ?? '—'}</TD>
                                     <TD>{grupo.matricula}</TD>
-                                    <TD>{grupo.modalidad}</TD>
+                                    <TD>
+                                        {grupo.modalidad}
+                                        {grupo.fecha_corte_modulo && (
+                                            <span className="block text-xs text-slate-400 dark:text-slate-500">
+                                                Corte módulo: {grupo.fecha_corte_modulo}
+                                            </span>
+                                        )}
+                                    </TD>
                                     <TD>
                                         {grupo.hora_inicio && grupo.hora_fin
                                             ? `${grupo.hora_inicio.slice(0, 5)} - ${grupo.hora_fin.slice(0, 5)}`

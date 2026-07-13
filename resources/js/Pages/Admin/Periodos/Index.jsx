@@ -4,15 +4,30 @@ import PageHeader from '@/Components/ui/PageHeader';
 import { EmptyRow, TBody, TD, TH, THead, TR, Table } from '@/Components/ui/Table';
 import ImportCsvButton from '@/Components/ImportCsvButton';
 import PrimaryButton from '@/Components/PrimaryButton';
+import SelectInput from '@/Components/SelectInput';
+import TextInput from '@/Components/TextInput';
+import useBusqueda from '@/Hooks/useBusqueda';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
 
-export default function Index({ periodos }) {
+export default function Index({ periodos, filtros }) {
+    const [q, setQ] = useBusqueda('admin.periodos.index', filtros);
+
     const eliminar = (periodo) => {
         if (confirm(`¿Eliminar el periodo "${periodo.nombre}"? Esto también eliminará sus cargas académicas.`)) {
             router.delete(route('admin.periodos.destroy', periodo.id));
         }
     };
+
+    const filtrar = (cambios) => {
+        router.get(
+            route('admin.periodos.index'),
+            { ...filtros, ...cambios },
+            { preserveState: true, preserveScroll: true, replace: true },
+        );
+    };
+
+    const hayFiltros = filtros.q || filtros.activo;
 
     return (
         <AuthenticatedLayout header={<h2 className="text-base font-semibold text-slate-900 dark:text-white">Periodos escolares</h2>}>
@@ -36,6 +51,46 @@ export default function Index({ periodos }) {
                         </>
                     }
                 />
+
+                <Card>
+                    <div className="flex flex-wrap items-end gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Buscar</label>
+                            <TextInput
+                                className="mt-1 block w-56"
+                                placeholder="Nombre…"
+                                value={q}
+                                onChange={(e) => setQ(e.target.value)}
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Estado</label>
+                            <SelectInput
+                                className="mt-1 block w-36"
+                                value={filtros.activo ?? ''}
+                                onChange={(e) => filtrar({ activo: e.target.value || undefined })}
+                            >
+                                <option value="">Todos</option>
+                                <option value="1">Activo</option>
+                                <option value="0">Inactivo</option>
+                            </SelectInput>
+                        </div>
+
+                        {hayFiltros && (
+                            <Link
+                                href={route('admin.periodos.index')}
+                                className="text-sm font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                            >
+                                Limpiar filtros
+                            </Link>
+                        )}
+
+                        <span className="ml-auto text-sm text-slate-400 dark:text-slate-500">
+                            {periodos.length} {periodos.length === 1 ? 'periodo' : 'periodos'}
+                        </span>
+                    </div>
+                </Card>
 
                 <Card padded={false}>
                     <Table>
@@ -76,7 +131,7 @@ export default function Index({ periodos }) {
                                 </TR>
                             ))}
                             {periodos.length === 0 && (
-                                <EmptyRow colSpan={5}>No hay periodos escolares registrados.</EmptyRow>
+                                <EmptyRow colSpan={5}>No hay periodos escolares que coincidan con los filtros.</EmptyRow>
                             )}
                         </TBody>
                     </Table>

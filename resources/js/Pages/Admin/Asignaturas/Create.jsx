@@ -11,6 +11,7 @@ export default function Create({ carreras }) {
         clave: '',
         semestre: '',
         horas_semana: '',
+        modulo_sabatino: '',
     });
 
     const submit = (e) => {

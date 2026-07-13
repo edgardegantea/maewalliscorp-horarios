@@ -46,12 +46,32 @@ class CargaAcademicaBuilderController extends Controller
             ])
             ->values();
 
+        // Los grupos incluyen los de todas las carreras visibles para el usuario
+        // (no solo la carrera seleccionada), para permitir combinar en una misma
+        // carga académica grupos de distintas carreras que comparten una clase
+        // (p. ej. una materia general impartida en simultáneo a varios grupos).
+        $carreraIdsVisibles = $this->carrerasVisibles($request)->pluck('id');
+
         return Inertia::render('Admin/CargasAcademicas/Builder', [
             'periodo' => $periodo,
             'carrera' => $carrera,
             'docentes' => $docentes,
-            'asignaturas' => Asignatura::where('carrera_id', $carrera->id)->orderBy('nombre')->get(['id', 'nombre', 'semestre', 'horas_semana']),
-            'grupos' => Grupo::where('carrera_id', $carrera->id)->where('periodo_escolar_id', $periodo->id)->orderBy('nombre')->get(['id', 'nombre', 'semestre', 'matricula', 'hora_inicio', 'hora_fin']),
+            'asignaturas' => Asignatura::where('carrera_id', $carrera->id)->orderBy('nombre')->get(['id', 'nombre', 'semestre', 'horas_semana', 'modulo_sabatino']),
+            'grupos' => Grupo::with('carrera:id,nombre')
+                ->whereIn('carrera_id', $carreraIdsVisibles)
+                ->where('periodo_escolar_id', $periodo->id)
+                ->orderBy('nombre')
+                ->get(['id', 'carrera_id', 'nombre', 'semestre', 'matricula', 'hora_inicio', 'hora_fin'])
+                ->map(fn (Grupo $g) => [
+                    'id' => $g->id,
+                    'carrera_id' => $g->carrera_id,
+                    'carrera_nombre' => $g->carrera->nombre,
+                    'nombre' => $g->nombre,
+                    'semestre' => $g->semestre,
+                    'matricula' => $g->matricula,
+                    'hora_inicio' => $g->hora_inicio,
+                    'hora_fin' => $g->hora_fin,
+                ]),
             'aulas' => Aula::where('activo', true)->orderBy('nombre')->get(['id', 'nombre', 'capacidad']),
             'slots' => Horario::slots(),
         ]);
@@ -100,7 +120,8 @@ class CargaAcademicaBuilderController extends Controller
                 });
 
                 if ($carga) {
-                    $esDeEstaCarrera = $carga->carrera_id === $carreraId;
+                    $esDeEstaCarrera = $carga->carrera_id === $carreraId
+                        || $carga->grupos->contains('carrera_id', $carreraId);
 
                     $horas[] = [
                         'hora' => $hora,
@@ -172,11 +193,47 @@ class CargaAcademicaBuilderController extends Controller
             isset($datos['asignatura_id']) ? (int) $datos['asignatura_id'] : null,
         );
 
+        $horas = isset($datos['asignatura_id'])
+            ? $accion->resumenHoras(
+                (int) $datos['asignatura_id'],
+                $grupoIds,
+                (int) $datos['periodo_escolar_id'],
+                isset($datos['ignorar_carga_id']) ? (int) $datos['ignorar_carga_id'] : null,
+            )
+            : null;
+
         return response()->json([
             'resultado' => $resultado->toArray(),
             'aulas_ocupadas' => $this->aulasOcupadas($datos),
             'grupos_ocupados' => $this->gruposOcupados($datos),
+            'horas' => $horas,
         ]);
+    }
+
+    /**
+     * Horas restantes de cada asignatura (de las que declaran horas_semana) para
+     * los grupos seleccionados, usado para anotar el selector de asignatura del
+     * modal y deshabilitar las que ya agotaron su cupo semanal.
+     */
+    public function horasPorAsignaturas(Request $request, VerificarDisponibilidadAction $accion): JsonResponse
+    {
+        $datos = $request->validate([
+            'periodo_escolar_id' => ['required', 'exists:periodos_escolares,id'],
+            'asignatura_ids' => ['required', 'array'],
+            'asignatura_ids.*' => ['exists:asignaturas,id'],
+            'grupo_ids' => ['required', 'array', 'min:1'],
+            'grupo_ids.*' => ['exists:grupos,id'],
+            'ignorar_carga_id' => ['nullable', 'exists:cargas_academicas,id'],
+        ]);
+
+        $horas = $accion->resumenHorasPorAsignaturas(
+            array_map('intval', $datos['asignatura_ids']),
+            array_map('intval', $datos['grupo_ids']),
+            (int) $datos['periodo_escolar_id'],
+            isset($datos['ignorar_carga_id']) ? (int) $datos['ignorar_carga_id'] : null,
+        );
+
+        return response()->json(['horas' => $horas]);
     }
 
     /**

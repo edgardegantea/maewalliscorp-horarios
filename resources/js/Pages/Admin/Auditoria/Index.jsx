@@ -1,9 +1,10 @@
+import SelectInput from '@/Components/SelectInput';
 import Badge from '@/Components/ui/Badge';
 import Card from '@/Components/ui/Card';
 import PageHeader from '@/Components/ui/PageHeader';
 import { EmptyRow, TBody, TD, TH, THead, TR, Table } from '@/Components/ui/Table';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 
 const COLOR_ACCION = {
     crear: 'green',
@@ -17,7 +18,17 @@ const ETIQUETA_ACCION = {
     eliminar: 'Eliminó',
 };
 
-export default function Index({ registros }) {
+export default function Index({ registros, usuarios, entidades, filtros }) {
+    const filtrar = (cambios) => {
+        router.get(
+            route('admin.auditoria.index'),
+            { ...filtros, ...cambios },
+            { preserveState: true, preserveScroll: true, replace: true },
+        );
+    };
+
+    const hayFiltros = filtros.usuario || filtros.accion || filtros.entidad;
+
     return (
         <AuthenticatedLayout header={<h2 className="text-base font-semibold text-slate-900 dark:text-white">Auditoría</h2>}>
             <Head title="Auditoría" />
@@ -28,6 +39,69 @@ export default function Index({ registros }) {
                     title="Auditoría"
                     description="Historial de cambios realizados en docentes, disponibilidad y cargas académicas."
                 />
+
+                <Card>
+                    <div className="flex flex-wrap items-end gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Usuario</label>
+                            <SelectInput
+                                className="mt-1 block w-56"
+                                value={filtros.usuario ?? ''}
+                                onChange={(e) => filtrar({ usuario: e.target.value || undefined })}
+                            >
+                                <option value="">Todos</option>
+                                {usuarios.map((u) => (
+                                    <option key={u.id} value={u.id}>
+                                        {u.name}
+                                    </option>
+                                ))}
+                            </SelectInput>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Acción</label>
+                            <SelectInput
+                                className="mt-1 block w-40"
+                                value={filtros.accion ?? ''}
+                                onChange={(e) => filtrar({ accion: e.target.value || undefined })}
+                            >
+                                <option value="">Todas</option>
+                                <option value="crear">Creó</option>
+                                <option value="actualizar">Actualizó</option>
+                                <option value="eliminar">Eliminó</option>
+                            </SelectInput>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Entidad</label>
+                            <SelectInput
+                                className="mt-1 block w-44"
+                                value={filtros.entidad ?? ''}
+                                onChange={(e) => filtrar({ entidad: e.target.value || undefined })}
+                            >
+                                <option value="">Todas</option>
+                                {entidades.map((e) => (
+                                    <option key={e} value={e}>
+                                        {e}
+                                    </option>
+                                ))}
+                            </SelectInput>
+                        </div>
+
+                        {hayFiltros && (
+                            <Link
+                                href={route('admin.auditoria.index')}
+                                className="text-sm font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                            >
+                                Limpiar filtros
+                            </Link>
+                        )}
+
+                        <span className="ml-auto text-sm text-slate-400 dark:text-slate-500">
+                            {registros.total} {registros.total === 1 ? 'registro' : 'registros'}
+                        </span>
+                    </div>
+                </Card>
 
                 <Card padded={false}>
                     <Table>
@@ -60,7 +134,9 @@ export default function Index({ registros }) {
                                 </TR>
                             ))}
                             {registros.data.length === 0 && (
-                                <EmptyRow colSpan={4}>No hay actividad registrada todavía.</EmptyRow>
+                                <EmptyRow colSpan={4}>
+                                    {hayFiltros ? 'No hay registros que coincidan con los filtros.' : 'No hay actividad registrada todavía.'}
+                                </EmptyRow>
                             )}
                         </TBody>
                     </Table>

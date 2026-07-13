@@ -18,10 +18,23 @@ class CarreraController extends Controller
 {
     use ImportsCsv;
 
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        $busqueda = $request->string('q')->toString() ?: null;
+        $activo = $request->query('activo');
+        $activo = $activo === null || $activo === '' ? null : (bool) $activo;
+
+        $carreras = Carrera::when($busqueda, fn ($q) => $q->where(fn ($q2) => $q2->where('nombre', 'ilike', "%{$busqueda}%")->orWhere('clave', 'ilike', "%{$busqueda}%")))
+            ->when($activo !== null, fn ($q) => $q->where('activo', $activo))
+            ->orderBy('nombre')
+            ->get();
+
         return Inertia::render('Admin/Carreras/Index', [
-            'carreras' => Carrera::orderBy('nombre')->get(),
+            'carreras' => $carreras,
+            'filtros' => [
+                'q' => $busqueda,
+                'activo' => $request->query('activo') ?: null,
+            ],
         ]);
     }
 

@@ -14,6 +14,7 @@ export default function Create({ carreras, periodos }) {
         modalidad: 'Escolarizado',
         hora_inicio: '',
         hora_fin: '',
+        fecha_corte_modulo: '',
     });
 
     const submit = (e) => {

@@ -80,6 +80,25 @@ export default function Form({ data, setData, errors, processing, onSubmit, canc
                 <InputError message={errors.semestre} className="mt-2" />
             </div>
 
+            <div>
+                <InputLabel htmlFor="modulo_sabatino" value="Módulo sabatino (opcional)" />
+                <SelectInput
+                    id="modulo_sabatino"
+                    className="mt-1 block w-full sm:w-1/2"
+                    value={data.modulo_sabatino ?? ''}
+                    onChange={(e) => setData('modulo_sabatino', e.target.value)}
+                >
+                    <option value="">No aplica</option>
+                    <option value="1">Módulo 1</option>
+                    <option value="2">Módulo 2</option>
+                </SelectInput>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    Para grupos que tienen clase el sábado (terminados en "F"), cuyo semestre se divide en dos
+                    módulos de hasta 3 materias cada uno. Indica en cuál se imparte esta asignatura.
+                </p>
+                <InputError message={errors.modulo_sabatino} className="mt-2" />
+            </div>
+
             <div className="flex items-center gap-4">
                 <PrimaryButton disabled={processing}>Guardar</PrimaryButton>
                 <Link href={cancelHref} className="text-sm text-slate-600 underline dark:text-slate-400 dark:hover:text-slate-200">

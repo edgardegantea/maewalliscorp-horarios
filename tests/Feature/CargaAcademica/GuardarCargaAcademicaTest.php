@@ -190,6 +190,84 @@ it('permite otro grupo con la misma asignatura sin verse afectado por el límite
     expect(CargaAcademica::count())->toBe(2);
 });
 
+it('resumenHoras informa las horas asignadas y restantes de una asignatura para un grupo', function () {
+    $e = escenario();
+    $e['asignatura']->update(['horas_semana' => 6]);
+    $accion = app(GuardarCargaAcademicaAction::class);
+
+    $accion->ejecutar(datosCarga($e, ['hora_inicio' => '08:00', 'hora_fin' => '12:00']), $e['admin']->id);
+
+    $resumen = app(VerificarDisponibilidadAction::class)->resumenHoras(
+        $e['asignatura']->id,
+        [$e['grupo']->id],
+        $e['periodo']->id,
+    );
+
+    expect($resumen)->toBe([
+        'horas_semana' => 6.0,
+        'asignadas' => 4.0,
+        'restantes' => 2.0,
+    ]);
+});
+
+it('resumenHoras devuelve null cuando la asignatura no declara horas_semana', function () {
+    $e = escenario();
+
+    $resumen = app(VerificarDisponibilidadAction::class)->resumenHoras(
+        $e['asignatura']->id,
+        [$e['grupo']->id],
+        $e['periodo']->id,
+    );
+
+    expect($resumen)->toBeNull();
+});
+
+it('resumenHoras toma el grupo más restringido cuando hay varios grupos', function () {
+    $e = escenario();
+    $e['asignatura']->update(['horas_semana' => 6]);
+    $accion = app(GuardarCargaAcademicaAction::class);
+    $grupoB = Grupo::create(['carrera_id' => $e['carrera']->id, 'periodo_escolar_id' => $e['periodo']->id, 'nombre' => '1B', 'matricula' => 20]);
+
+    // El grupo original ya tiene 5h asignadas de esta asignatura; grupoB no tiene ninguna.
+    $accion->ejecutar(datosCarga($e, ['grupo_ids' => [$e['grupo']->id, $grupoB->id], 'hora_inicio' => '08:00', 'hora_fin' => '13:00']), $e['admin']->id);
+
+    $resumen = app(VerificarDisponibilidadAction::class)->resumenHoras(
+        $e['asignatura']->id,
+        [$e['grupo']->id, $grupoB->id],
+        $e['periodo']->id,
+    );
+
+    expect($resumen['restantes'])->toBe(1.0);
+});
+
+it('resumenHorasPorAsignaturas devuelve el resumen de varias asignaturas a la vez y omite las sin horas_semana', function () {
+    $e = escenario();
+    $e['asignatura']->update(['horas_semana' => 4]);
+    $sinHoras = Asignatura::create(['carrera_id' => $e['carrera']->id, 'nombre' => 'Materia 2', 'clave' => 'MAT2']);
+
+    app(GuardarCargaAcademicaAction::class)->ejecutar(datosCarga($e, ['hora_inicio' => '08:00', 'hora_fin' => '12:00']), $e['admin']->id);
+
+    $resumen = app(VerificarDisponibilidadAction::class)->resumenHorasPorAsignaturas(
+        [$e['asignatura']->id, $sinHoras->id],
+        [$e['grupo']->id],
+        $e['periodo']->id,
+    );
+
+    expect($resumen)->toHaveKey($e['asignatura']->id)
+        ->and($resumen[$e['asignatura']->id]['restantes'])->toBe(0.0)
+        ->and($resumen)->not->toHaveKey($sinHoras->id);
+});
+
+it('resumenHorasPorAsignaturas devuelve arreglo vacío sin grupos o asignaturas', function () {
+    $e = escenario();
+
+    $resumen = app(VerificarDisponibilidadAction::class)->resumenHorasPorAsignaturas([], [$e['grupo']->id], $e['periodo']->id);
+    expect($resumen)->toBe([]);
+
+    $resumen = app(VerificarDisponibilidadAction::class)->resumenHorasPorAsignaturas([$e['asignatura']->id], [], $e['periodo']->id);
+    expect($resumen)->toBe([]);
+});
+
 it('la verificación detecta que un aula específica queda libre en horario contiguo', function () {
     $e = escenario();
     app(GuardarCargaAcademicaAction::class)->ejecutar(datosCarga($e, ['hora_inicio' => '09:00', 'hora_fin' => '10:00']), $e['admin']->id);
@@ -258,6 +336,51 @@ it('rechaza una carga fuera del horario propio del grupo', function () {
         $e['admin']->id,
     );
 })->throws(ValidationException::class);
+
+it('rechaza asignar clase el sábado a un grupo que no es sabatino', function () {
+    $e = escenario();
+    DisponibilidadDocente::create([
+        'docente_id' => $e['docente']->id,
+        'periodo_escolar_id' => $e['periodo']->id,
+        'dia_semana' => 6,
+        'hora_inicio' => '08:00',
+        'hora_fin' => '14:00',
+    ]);
+
+    // El grupo "1A" del escenario base no termina en "F".
+    app(GuardarCargaAcademicaAction::class)->ejecutar(
+        datosCarga($e, ['dia_semana' => 6, 'hora_inicio' => '08:00', 'hora_fin' => '09:00']),
+        $e['admin']->id,
+    );
+})->throws(ValidationException::class);
+
+it('permite asignar clase el sábado a un grupo sabatino terminado en F', function () {
+    $e = escenario();
+    $grupoSabatino = Grupo::create(['carrera_id' => $e['carrera']->id, 'periodo_escolar_id' => $e['periodo']->id, 'nombre' => '1F', 'matricula' => 30]);
+    DisponibilidadDocente::create([
+        'docente_id' => $e['docente']->id,
+        'periodo_escolar_id' => $e['periodo']->id,
+        'dia_semana' => 6,
+        'hora_inicio' => '08:00',
+        'hora_fin' => '14:00',
+    ]);
+
+    $carga = app(GuardarCargaAcademicaAction::class)->ejecutar(
+        datosCarga($e, ['grupo_ids' => [$grupoSabatino->id], 'dia_semana' => 6, 'hora_inicio' => '08:00', 'hora_fin' => '09:00']),
+        $e['admin']->id,
+    );
+
+    expect($carga->grupos()->pluck('grupos.id')->all())->toBe([$grupoSabatino->id]);
+});
+
+it('no aplica la restricción de grupo sabatino en días distintos al sábado', function () {
+    $e = escenario();
+
+    // El grupo "1A" del escenario base (no termina en F) sí puede tener clase entre semana.
+    $carga = app(GuardarCargaAcademicaAction::class)->ejecutar(datosCarga($e), $e['admin']->id);
+
+    expect($carga->exists)->toBeTrue();
+});
 
 it('acepta una carga dentro del horario propio del grupo', function () {
     $e = escenario();

@@ -17,8 +17,9 @@ const ESTADO_BADGE = {
     conflicto: { color: 'red', label: 'Con problema' },
 };
 
-function GrupoSection({ item }) {
+function GrupoSection({ item, periodo, carrera }) {
     const { grupo, cargas } = item;
+    const [abierto, setAbierto] = useState(false);
 
     const eliminar = (carga) => {
         if (confirm('¿Eliminar esta carga académica?')) {
@@ -28,8 +29,20 @@ function GrupoSection({ item }) {
 
     return (
         <Card padded={false}>
-            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+            <button
+                type="button"
+                onClick={() => setAbierto((a) => !a)}
+                className="flex w-full items-center justify-between border-b border-slate-200 px-4 py-3 text-left dark:border-slate-800"
+            >
                 <div className="flex items-center gap-2">
+                    <svg
+                        className={`h-4 w-4 shrink-0 text-slate-400 transition-transform dark:text-slate-500 ${abierto ? 'rotate-90' : ''}`}
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                    >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
                     <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Grupo {grupo.nombre}</h3>
                     {grupo.semestre && <Badge color="slate">Semestre {grupo.semestre}</Badge>}
                     <Badge color="indigo">{grupo.matricula} alumnos</Badge>
@@ -37,9 +50,9 @@ function GrupoSection({ item }) {
                 <span className="text-xs text-slate-400 dark:text-slate-500">
                     {cargas.length} {cargas.length === 1 ? 'clase asignada' : 'clases asignadas'}
                 </span>
-            </div>
+            </button>
 
-            {cargas.length === 0 ? (
+            {abierto && (cargas.length === 0 ? (
                 <p className="px-4 py-6 text-sm text-slate-400 dark:text-slate-500">Sin cargas académicas asignadas todavía.</p>
             ) : (
                 <Table>
@@ -75,18 +88,37 @@ function GrupoSection({ item }) {
                                     )}
                                 </TD>
                                 <TD align="right">
-                                    <button
-                                        onClick={() => eliminar(carga)}
-                                        className="font-medium text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
-                                    >
-                                        Eliminar
-                                    </button>
+                                    <div className="flex justify-end gap-4">
+                                        <Link
+                                            href={route('admin.cargas.builder', {
+                                                periodo,
+                                                carrera,
+                                                docente: carga.docente_id,
+                                                editar: carga.id,
+                                                dia: carga.dia_semana,
+                                                hora_inicio: carga.hora_inicio.slice(0, 5),
+                                                hora_fin: carga.hora_fin.slice(0, 5),
+                                                asignatura_id: carga.asignatura_id,
+                                                aula_id: carga.aula_id,
+                                                grupo_ids: carga.grupos.map((g) => g.id).join(','),
+                                            })}
+                                            className="font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
+                                        >
+                                            Editar
+                                        </Link>
+                                        <button
+                                            onClick={() => eliminar(carga)}
+                                            className="font-medium text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                                        >
+                                            Eliminar
+                                        </button>
+                                    </div>
                                 </TD>
                             </TR>
                         ))}
                     </TBody>
                 </Table>
-            )}
+            ))}
         </Card>
     );
 }
@@ -186,7 +218,7 @@ export default function Index({ periodos, carreras, periodoSeleccionado, carrera
                 {puedeCrear ? (
                     <div className="space-y-6">
                         {grupos.map((item) => (
-                            <GrupoSection key={item.grupo.id} item={item} />
+                            <GrupoSection key={item.grupo.id} item={item} periodo={periodo} carrera={carrera} />
                         ))}
                         {grupos.length === 0 && (
                             <Card>

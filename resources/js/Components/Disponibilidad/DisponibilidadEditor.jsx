@@ -17,6 +17,24 @@ const DIAS = [
 // Recorta "HH:MM:SS" a "HH:MM" para los inputs type=time.
 const hhmm = (hora) => (hora ? hora.slice(0, 5) : '');
 
+// Minutos entre dos horas "HH:MM"; 0 si el bloque está incompleto o es inválido.
+function minutosBloque(bloque) {
+    if (!bloque.hora_inicio || !bloque.hora_fin) {
+        return 0;
+    }
+    const [hi, mi] = bloque.hora_inicio.split(':').map(Number);
+    const [hf, mf] = bloque.hora_fin.split(':').map(Number);
+    const minutos = hf * 60 + mf - (hi * 60 + mi);
+
+    return minutos > 0 ? minutos : 0;
+}
+
+const formatoHoras = (minutos) => {
+    const horas = minutos / 60;
+
+    return Number.isInteger(horas) ? `${horas}` : horas.toFixed(1);
+};
+
 function agrupar(bloques) {
     const porDia = {};
     DIAS.forEach((d) => (porDia[d.value] = []));
@@ -64,6 +82,21 @@ export default function DisponibilidadEditor({
         });
     };
 
+    const minutosPorDia = useMemo(() => {
+        const totales = {};
+        DIAS.forEach((d) => {
+            totales[d.value] = data.dias[d.value].reduce((sum, b) => sum + minutosBloque(b), 0);
+        });
+        return totales;
+    }, [data.dias]);
+
+    const minutosSemana = useMemo(
+        () => Object.values(minutosPorDia).reduce((sum, m) => sum + m, 0),
+        [minutosPorDia],
+    );
+
+    const excedeSemana = minutosSemana > 40 * 60;
+
     const enviar = (e) => {
         e.preventDefault();
 
@@ -110,8 +143,23 @@ export default function DisponibilidadEditor({
 
             <p className="rounded-md bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-500/10 dark:text-amber-400">
                 El rango total de cada día (del inicio del primer bloque al fin del último) no puede
-                exceder 8 horas. Puedes registrar varios bloques por día para turnos partidos.
+                exceder 8 horas (12 horas los sábados), y la suma de horas de toda la semana no puede
+                exceder 40 horas. Puedes registrar varios bloques por día para turnos partidos.
             </p>
+
+            <div
+                className={`flex items-center justify-between rounded-md p-3 text-sm ${
+                    excedeSemana
+                        ? 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400'
+                        : 'bg-slate-50 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                }`}
+            >
+                <span className="font-medium">Total semanal de disponibilidad</span>
+                <span className="font-semibold">
+                    {formatoHoras(minutosSemana)} / 40 horas
+                    {excedeSemana ? ' — excede el límite' : ''}
+                </span>
+            </div>
 
             <InputError message={errors.bloques} className="mt-2" />
 
@@ -120,13 +168,20 @@ export default function DisponibilidadEditor({
                     <div key={dia.value} className="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
                         <div className="flex items-center justify-between">
                             <h4 className="font-medium text-slate-800 dark:text-slate-200">{dia.label}</h4>
-                            <button
-                                type="button"
-                                onClick={() => agregarBloque(dia.value)}
-                                className="text-sm text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
-                            >
-                                + Agregar bloque
-                            </button>
+                            <div className="flex items-center gap-3">
+                                {minutosPorDia[dia.value] > 0 && (
+                                    <span className="text-xs text-slate-400 dark:text-slate-500">
+                                        {formatoHoras(minutosPorDia[dia.value])}h
+                                    </span>
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={() => agregarBloque(dia.value)}
+                                    className="text-sm text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
+                                >
+                                    + Agregar bloque
+                                </button>
+                            </div>
                         </div>
 
                         {data.dias[dia.value].length === 0 && (
@@ -169,7 +224,7 @@ export default function DisponibilidadEditor({
                 ))}
             </div>
 
-            <PrimaryButton disabled={processing}>Guardar disponibilidad</PrimaryButton>
+            <PrimaryButton disabled={processing || excedeSemana}>Guardar disponibilidad</PrimaryButton>
         </form>
     );
 }

@@ -130,6 +130,23 @@ export default function Form({ data, setData, errors, processing, onSubmit, canc
                 rango (además de la disponibilidad del docente).
             </p>
 
+            <div>
+                <InputLabel htmlFor="fecha_corte_modulo" value="Fecha de corte de módulo (opcional)" />
+                <TextInput
+                    id="fecha_corte_modulo"
+                    type="date"
+                    className="mt-1 block w-full sm:w-1/2"
+                    value={data.fecha_corte_modulo ?? ''}
+                    onChange={(e) => setData('fecha_corte_modulo', e.target.value)}
+                />
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    Para grupos que tienen clase el sábado (terminados en "F", p. ej. 1F): fecha en la que
+                    termina el módulo 1 (primera mitad del semestre, hasta 3 materias) y empieza el módulo 2
+                    (segunda mitad, el resto de las materias).
+                </p>
+                <InputError message={errors.fecha_corte_modulo} className="mt-2" />
+            </div>
+
             <div className="flex items-center gap-4">
                 <PrimaryButton disabled={processing}>Guardar</PrimaryButton>
                 <Link href={cancelHref} className="text-sm text-slate-600 underline dark:text-slate-400 dark:hover:text-slate-200">

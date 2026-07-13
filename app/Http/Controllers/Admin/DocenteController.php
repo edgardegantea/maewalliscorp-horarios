@@ -24,12 +24,29 @@ class DocenteController extends Controller
 {
     use ImportsCsv;
 
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        $busqueda = $request->string('q')->toString() ?: null;
+        $carreraId = $request->integer('carrera') ?: null;
+
+        $docentes = Docente::with(['user', 'docenteCarreras.carrera', 'docenteCarreras.periodoEscolar'])
+            ->when($busqueda, fn ($q) => $q->where(fn ($q2) => $q2
+                ->where('numero_empleado', 'ilike', "%{$busqueda}%")
+                ->orWhereHas('user', fn ($q3) => $q3
+                    ->where('name', 'ilike', "%{$busqueda}%")
+                    ->orWhere('username', 'ilike', "%{$busqueda}%")
+                    ->orWhere('email', 'ilike', "%{$busqueda}%"))))
+            ->when($carreraId, fn ($q) => $q->whereHas('docenteCarreras', fn ($q2) => $q2->where('carrera_id', $carreraId)))
+            ->orderBy('id')
+            ->get();
+
         return Inertia::render('Admin/Docentes/Index', [
-            'docentes' => Docente::with(['user', 'docenteCarreras.carrera', 'docenteCarreras.periodoEscolar'])
-                ->orderBy('id')
-                ->get(),
+            'docentes' => $docentes,
+            'carreras' => Carrera::orderBy('nombre')->get(),
+            'filtros' => [
+                'q' => $busqueda,
+                'carrera' => $carreraId,
+            ],
         ]);
     }
 

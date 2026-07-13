@@ -16,10 +16,27 @@ class AulaController extends Controller
 {
     use ImportsCsv;
 
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        $busqueda = $request->string('q')->toString() ?: null;
+        $tipo = $request->string('tipo')->toString() ?: null;
+        $activo = $request->query('activo');
+        $activo = $activo === null || $activo === '' ? null : (bool) $activo;
+
+        $aulas = Aula::when($busqueda, fn ($q) => $q->where('nombre', 'ilike', "%{$busqueda}%"))
+            ->when($tipo, fn ($q) => $q->where('tipo', $tipo))
+            ->when($activo !== null, fn ($q) => $q->where('activo', $activo))
+            ->orderBy('nombre')
+            ->get();
+
         return Inertia::render('Admin/Aulas/Index', [
-            'aulas' => Aula::orderBy('nombre')->get(),
+            'aulas' => $aulas,
+            'tipos' => Aula::whereNotNull('tipo')->distinct()->orderBy('tipo')->pluck('tipo'),
+            'filtros' => [
+                'q' => $busqueda,
+                'tipo' => $tipo,
+                'activo' => $request->query('activo') ?: null,
+            ],
         ]);
     }
 

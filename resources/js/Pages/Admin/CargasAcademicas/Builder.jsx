@@ -7,12 +7,42 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
 import { useCallback, useEffect, useState } from 'react';
 
+// Lee los parámetros de la URL usados para abrir directamente la edición de una
+// carga académica existente (enlace "Editar" desde el listado).
+function leerEdicionDesdeUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const editarId = params.get('editar');
+
+    if (!editarId) {
+        return null;
+    }
+
+    return {
+        docenteId: params.get('docente'),
+        seleccion: {
+            dia_semana: Number(params.get('dia')),
+            hora_inicio: params.get('hora_inicio'),
+            hora_fin: params.get('hora_fin'),
+            cargaExistente: {
+                id: Number(editarId),
+                asignatura_id: Number(params.get('asignatura_id')),
+                grupo_ids: (params.get('grupo_ids') ?? '')
+                    .split(',')
+                    .filter(Boolean)
+                    .map(Number),
+                aula_id: Number(params.get('aula_id')),
+            },
+        },
+    };
+}
+
 export default function Builder({ periodo, carrera, docentes, asignaturas, grupos, aulas, slots }) {
-    const [docenteId, setDocenteId] = useState(docentes[0]?.id ?? '');
+    const [edicionInicial] = useState(leerEdicionDesdeUrl);
+    const [docenteId, setDocenteId] = useState(edicionInicial?.docenteId ?? docentes[0]?.id ?? '');
     const [dias, setDias] = useState(null);
     const [cargando, setCargando] = useState(false);
-    const [seleccion, setSeleccion] = useState(null);
-    const [modalAbierto, setModalAbierto] = useState(false);
+    const [seleccion, setSeleccion] = useState(edicionInicial?.seleccion ?? null);
+    const [modalAbierto, setModalAbierto] = useState(Boolean(edicionInicial));
     const [plantilla, setPlantilla] = useState(null);
 
     const cargarGrid = useCallback(() => {
@@ -61,11 +91,14 @@ export default function Builder({ periodo, carrera, docentes, asignaturas, grupo
         setModalAbierto(true);
     }, [dias]);
 
-    const cerrarModal = (guardado) => {
+    const cerrarModal = (guardado, continuar) => {
         setModalAbierto(false);
         setSeleccion(null);
         if (guardado) {
             cargarGrid();
+        }
+        if (continuar) {
+            setPlantilla(continuar);
         }
     };
 
@@ -123,7 +156,11 @@ export default function Builder({ periodo, carrera, docentes, asignaturas, grupo
 
                 {plantilla && (
                     <div className="flex items-center justify-between rounded-lg bg-indigo-50 p-4 text-sm text-indigo-800 ring-1 ring-inset ring-indigo-600/20 dark:bg-indigo-500/10 dark:text-indigo-400 dark:ring-indigo-500/20">
-                        <span>Selecciona una hora en el grid para duplicar ahí la clase copiada.</span>
+                        <span>
+                            {plantilla.motivo === 'continuar'
+                                ? `Aún quedan ${plantilla.horasRestantes}h de "${plantilla.asignaturaNombre}" por asignar. Selecciona la siguiente hora en el grid para continuar.`
+                                : 'Selecciona una hora en el grid para duplicar ahí la clase copiada.'}
+                        </span>
                         <button
                             type="button"
                             onClick={() => setPlantilla(null)}
@@ -161,6 +198,7 @@ export default function Builder({ periodo, carrera, docentes, asignaturas, grupo
 
             {docenteId && (
                 <SlotModal
+                    key={docenteId}
                     show={modalAbierto}
                     onClose={cerrarModal}
                     seleccion={seleccion}

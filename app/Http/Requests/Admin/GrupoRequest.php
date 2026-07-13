@@ -33,6 +33,7 @@ class GrupoRequest extends FormRequest
             'modalidad' => ['required', 'string', 'max:50'],
             'hora_inicio' => ['nullable', 'date_format:H:i', 'required_with:hora_fin'],
             'hora_fin' => ['nullable', 'date_format:H:i', 'required_with:hora_inicio', 'after:hora_inicio'],
+            'fecha_corte_modulo' => ['nullable', 'date'],
         ];
     }
 }

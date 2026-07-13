@@ -4,6 +4,7 @@ use App\Actions\CargaAcademica\GuardarCargaAcademicaAction;
 use App\Mail\CargaAcademicaNotificacion;
 use App\Models\Asignatura;
 use App\Models\Aula;
+use App\Models\CargaAcademica;
 use App\Models\Carrera;
 use App\Models\DisponibilidadDocente;
 use App\Models\Docente;
@@ -131,15 +132,46 @@ it('notifica por correo al docente cuando se elimina una de sus cargas académic
     });
 });
 
-it('rechaza guardar si el grupo no pertenece a la carrera', function () {
+it('permite combinar en una carga grupos de otra carrera (clase compartida entre carreras)', function () {
     $admin = User::factory()->admin()->create();
     $c = contextoEndpoint();
 
     $otraCarrera = Carrera::create(['nombre' => 'Otra', 'clave' => 'OT']);
-    $grupoAjeno = Grupo::create(['carrera_id' => $otraCarrera->id, 'periodo_escolar_id' => $c['periodo']->id, 'nombre' => 'X', 'matricula' => 10]);
+    $grupoDeOtraCarrera = Grupo::create(['carrera_id' => $otraCarrera->id, 'periodo_escolar_id' => $c['periodo']->id, 'nombre' => 'X', 'matricula' => 10]);
+
+    $this->actingAs($admin)
+        ->post(route('admin.cargas.store'), payload($c, ['grupo_ids' => [$c['grupo']->id, $grupoDeOtraCarrera->id]]))
+        ->assertRedirect()
+        ->assertSessionDoesntHaveErrors();
+
+    $carga = CargaAcademica::first();
+    expect($carga->grupos()->pluck('grupos.id')->sort()->values()->all())
+        ->toBe(collect([$c['grupo']->id, $grupoDeOtraCarrera->id])->sort()->values()->all());
+});
+
+it('rechaza guardar si el grupo no pertenece al periodo escolar', function () {
+    $admin = User::factory()->admin()->create();
+    $c = contextoEndpoint();
+
+    $otroPeriodo = PeriodoEscolar::create(['nombre' => 'Otro periodo', 'fecha_inicio' => '2027-01-01', 'fecha_fin' => '2027-06-30', 'activo' => false]);
+    $grupoDeOtroPeriodo = Grupo::create(['carrera_id' => $c['carrera']->id, 'periodo_escolar_id' => $otroPeriodo->id, 'nombre' => 'X', 'matricula' => 10]);
 
     $this->actingAs($admin)
         ->from(route('admin.cargas.index'))
-        ->post(route('admin.cargas.store'), payload($c, ['grupo_ids' => [$grupoAjeno->id]]))
+        ->post(route('admin.cargas.store'), payload($c, ['grupo_ids' => [$grupoDeOtroPeriodo->id]]))
         ->assertSessionHasErrors('grupo_ids.0');
+});
+
+it('un coordinador no puede combinar un grupo de una carrera a la que no tiene acceso', function () {
+    $c = contextoEndpoint();
+    $coordinador = User::factory()->coordinador()->create();
+    $coordinador->carrerasCoordinadas()->attach($c['carrera']->id);
+
+    $otraCarrera = Carrera::create(['nombre' => 'Ajena', 'clave' => 'AJ']);
+    $grupoAjeno = Grupo::create(['carrera_id' => $otraCarrera->id, 'periodo_escolar_id' => $c['periodo']->id, 'nombre' => 'X', 'matricula' => 10]);
+
+    $this->actingAs($coordinador)
+        ->from(route('admin.cargas.index'))
+        ->post(route('admin.cargas.store'), payload($c, ['grupo_ids' => [$c['grupo']->id, $grupoAjeno->id]]))
+        ->assertSessionHasErrors('grupo_ids');
 });

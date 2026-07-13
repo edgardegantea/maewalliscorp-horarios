@@ -14,7 +14,9 @@ class GuardarDisponibilidadAction
      *  - hora_fin > hora_inicio en cada bloque,
      *  - los bloques del mismo día no se traslapan entre sí,
      *  - el rango total del día (del inicio del primer bloque al fin del último) no
-     *    excede 8 horas — la regla de las 8 horas laborales anclada al inicio.
+     *    excede el límite laboral diario — 8 horas de lunes a viernes, 12 horas los
+     *    sábados,
+     *  - la suma de horas de disponibilidad de toda la semana no excede 40 horas.
      *
      * @param  array<int, array{dia_semana: int, hora_inicio: string, hora_fin: string}>  $bloques
      */
@@ -45,6 +47,7 @@ class GuardarDisponibilidadAction
     private function validar(array $bloques): void
     {
         $porDia = [];
+        $totalMinutosSemana = 0;
 
         foreach ($bloques as $indice => $bloque) {
             $inicio = $this->aMinutos($bloque['hora_inicio']);
@@ -57,6 +60,7 @@ class GuardarDisponibilidadAction
             }
 
             $porDia[$bloque['dia_semana']][] = ['inicio' => $inicio, 'fin' => $fin];
+            $totalMinutosSemana += $fin - $inicio;
         }
 
         foreach ($porDia as $dia => $rangos) {
@@ -71,12 +75,19 @@ class GuardarDisponibilidadAction
             }
 
             $spanMinutos = end($rangos)['fin'] - $rangos[0]['inicio'];
+            $limiteHoras = $this->limiteHorasDelDia((int) $dia);
 
-            if ($spanMinutos > 8 * 60) {
+            if ($spanMinutos > $limiteHoras * 60) {
                 throw ValidationException::withMessages([
-                    'bloques' => "El rango total de disponibilidad del día {$dia} no puede exceder 8 horas.",
+                    'bloques' => "El rango total de disponibilidad del día {$dia} no puede exceder {$limiteHoras} horas.",
                 ]);
             }
+        }
+
+        if ($totalMinutosSemana > 40 * 60) {
+            throw ValidationException::withMessages([
+                'bloques' => 'La suma de horas de disponibilidad de la semana no puede exceder 40 horas.',
+            ]);
         }
     }
 
@@ -85,5 +96,13 @@ class GuardarDisponibilidadAction
         [$h, $m] = array_map('intval', explode(':', $hora));
 
         return $h * 60 + $m;
+    }
+
+    /**
+     * Límite de horas laborales por día: 12 horas los sábados (día 6), 8 el resto.
+     */
+    private function limiteHorasDelDia(int $diaSemana): int
+    {
+        return $diaSemana === 6 ? 12 : 8;
     }
 }

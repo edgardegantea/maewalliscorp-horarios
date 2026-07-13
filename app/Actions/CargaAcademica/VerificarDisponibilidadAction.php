@@ -17,9 +17,12 @@ class VerificarDisponibilidadAction
      *    un aula/docente/grupo puede chocar entre carreras distintas). Una
      *    carga puede impartirse a una combinación de varios grupos a la vez.
      *  - Cae completa dentro de un bloque de disponibilidad del docente ese día
-     *    (regla de las 8 horas: la disponibilidad ya está acotada a un rango <= 8h).
+     *    (límite laboral: la disponibilidad ya está acotada a un rango <= 8h,
+     *    o <= 12h los sábados).
      *  - No excede las horas semanales declaradas de la asignatura para ninguno
      *    de los grupos.
+     *  - Los sábados, todos los grupos deben ser sabatinos (nombre terminado en
+     *    "F", p. ej. 1F, 2F, 3F).
      *
      * @param  array<int, int>  $grupoIds
      */
@@ -59,6 +62,15 @@ class VerificarDisponibilidadAction
             $mensajeHorarioGrupo = $this->fueraDeHorarioDelGrupo($grupoId, $horaInicio, $horaFin);
             if ($mensajeHorarioGrupo !== null) {
                 $conflictos[] = ['tipo' => 'horario_grupo', 'mensaje' => $mensajeHorarioGrupo];
+            }
+        }
+
+        if ($diaSemana === 6) {
+            foreach ($grupoIds as $grupoId) {
+                $mensajeGrupoSabatino = $this->noEsGrupoSabatino($grupoId);
+                if ($mensajeGrupoSabatino !== null) {
+                    $conflictos[] = ['tipo' => 'grupo_sabatino', 'mensaje' => $mensajeGrupoSabatino];
+                }
             }
         }
 
@@ -122,6 +134,21 @@ class VerificarDisponibilidadAction
     }
 
     /**
+     * Los sábados solo se puede impartir clase a grupos sabatinos, identificados
+     * por terminar su nombre en la letra "F" (1F, 2F, 3F, etc.).
+     */
+    private function noEsGrupoSabatino(int $grupoId): ?string
+    {
+        $grupo = Grupo::find($grupoId);
+
+        if (! $grupo || preg_match('/f$/i', trim($grupo->nombre)) === 1) {
+            return null;
+        }
+
+        return "El grupo \"{$grupo->nombre}\" no es un grupo sabatino (debe terminar en \"F\", p. ej. 1F); no se le puede asignar clase en sábado.";
+    }
+
+    /**
      * Suma las horas ya asignadas de la asignatura para ese grupo en el periodo
      * (en todos los días) y verifica que, al agregar el nuevo bloque, no se
      * exceda el límite de horas_semana declarado en la asignatura.
@@ -140,15 +167,7 @@ class VerificarDisponibilidadAction
             return null;
         }
 
-        $bloques = DB::table('carga_academica_grupo')
-            ->join('cargas_academicas', 'cargas_academicas.id', '=', 'carga_academica_grupo.carga_academica_id')
-            ->where('carga_academica_grupo.grupo_id', $grupoId)
-            ->where('cargas_academicas.periodo_escolar_id', $periodoEscolarId)
-            ->where('cargas_academicas.asignatura_id', $asignaturaId)
-            ->when($ignorarCargaId, fn ($q) => $q->where('cargas_academicas.id', '!=', $ignorarCargaId))
-            ->get(['cargas_academicas.hora_inicio', 'cargas_academicas.hora_fin']);
-
-        $minutosExistentes = $bloques->sum(fn ($c) => $this->aMinutos($c->hora_fin) - $this->aMinutos($c->hora_inicio));
+        $minutosExistentes = $this->minutosAsignados($asignaturaId, $grupoId, $periodoEscolarId, $ignorarCargaId);
 
         $minutosNuevos = $this->aMinutos($horaFin) - $this->aMinutos($horaInicio);
         $totalMinutos = $minutosExistentes + $minutosNuevos;
@@ -161,6 +180,122 @@ class VerificarDisponibilidadAction
         }
 
         return null;
+    }
+
+    /**
+     * Minutos ya asignados de una asignatura a un grupo, en todos los días del periodo.
+     */
+    private function minutosAsignados(int $asignaturaId, int $grupoId, int $periodoEscolarId, ?int $ignorarCargaId): int
+    {
+        $bloques = DB::table('carga_academica_grupo')
+            ->join('cargas_academicas', 'cargas_academicas.id', '=', 'carga_academica_grupo.carga_academica_id')
+            ->where('carga_academica_grupo.grupo_id', $grupoId)
+            ->where('cargas_academicas.periodo_escolar_id', $periodoEscolarId)
+            ->where('cargas_academicas.asignatura_id', $asignaturaId)
+            ->when($ignorarCargaId, fn ($q) => $q->where('cargas_academicas.id', '!=', $ignorarCargaId))
+            ->get(['cargas_academicas.hora_inicio', 'cargas_academicas.hora_fin']);
+
+        return $bloques->sum(fn ($c) => $this->aMinutos($c->hora_fin) - $this->aMinutos($c->hora_inicio));
+    }
+
+    /**
+     * Resumen informativo (no de validación) de cuántas horas de la asignatura ya
+     * están asignadas a los grupos dados y cuántas quedan disponibles, para que la
+     * UI pueda ofrecer continuar asignando la misma asignatura hasta agotar su
+     * cupo semanal. Devuelve null si la asignatura no existe o no declara
+     * horas_semana. Cuando hay varios grupos, se toma el más restringido (el que
+     * tenga menos horas restantes).
+     *
+     * @param  array<int, int>  $grupoIds
+     * @return array{horas_semana: float, asignadas: float, restantes: float}|null
+     */
+    public function resumenHoras(int $asignaturaId, array $grupoIds, int $periodoEscolarId, ?int $ignorarCargaId = null): ?array
+    {
+        $asignatura = Asignatura::find($asignaturaId);
+
+        if (! $asignatura || $asignatura->horas_semana === null || empty($grupoIds)) {
+            return null;
+        }
+
+        $limiteMinutos = $asignatura->horas_semana * 60;
+        $minRestante = null;
+
+        foreach ($grupoIds as $grupoId) {
+            $minutosExistentes = $this->minutosAsignados($asignaturaId, $grupoId, $periodoEscolarId, $ignorarCargaId);
+            $restante = $limiteMinutos - $minutosExistentes;
+
+            if ($minRestante === null || $restante < $minRestante) {
+                $minRestante = $restante;
+            }
+        }
+
+        return [
+            'horas_semana' => (float) $asignatura->horas_semana,
+            'asignadas' => round(($limiteMinutos - $minRestante) / 60, 2),
+            'restantes' => round(max($minRestante, 0) / 60, 2),
+        ];
+    }
+
+    /**
+     * Igual que resumenHoras() pero para varias asignaturas a la vez (una sola
+     * consulta), pensado para alimentar el selector de asignatura del modal y
+     * mostrar cuántas horas le quedan a cada una para los grupos seleccionados.
+     * Las asignaturas sin horas_semana declarado se omiten del resultado.
+     *
+     * @param  array<int, int>  $asignaturaIds
+     * @param  array<int, int>  $grupoIds
+     * @return array<int, array{horas_semana: float, asignadas: float, restantes: float}>
+     */
+    public function resumenHorasPorAsignaturas(array $asignaturaIds, array $grupoIds, int $periodoEscolarId, ?int $ignorarCargaId = null): array
+    {
+        if (empty($asignaturaIds) || empty($grupoIds)) {
+            return [];
+        }
+
+        $asignaturas = Asignatura::whereIn('id', $asignaturaIds)->whereNotNull('horas_semana')->get();
+
+        if ($asignaturas->isEmpty()) {
+            return [];
+        }
+
+        $filas = DB::table('carga_academica_grupo')
+            ->join('cargas_academicas', 'cargas_academicas.id', '=', 'carga_academica_grupo.carga_academica_id')
+            ->whereIn('carga_academica_grupo.grupo_id', $grupoIds)
+            ->whereIn('cargas_academicas.asignatura_id', $asignaturas->pluck('id'))
+            ->where('cargas_academicas.periodo_escolar_id', $periodoEscolarId)
+            ->when($ignorarCargaId, fn ($q) => $q->where('cargas_academicas.id', '!=', $ignorarCargaId))
+            ->get(['cargas_academicas.asignatura_id', 'carga_academica_grupo.grupo_id', 'cargas_academicas.hora_inicio', 'cargas_academicas.hora_fin']);
+
+        $minutosPorAsignaturaGrupo = [];
+        foreach ($filas as $fila) {
+            $clave = "{$fila->asignatura_id}:{$fila->grupo_id}";
+            $minutosPorAsignaturaGrupo[$clave] = ($minutosPorAsignaturaGrupo[$clave] ?? 0)
+                + ($this->aMinutos($fila->hora_fin) - $this->aMinutos($fila->hora_inicio));
+        }
+
+        $resumen = [];
+
+        foreach ($asignaturas as $asignatura) {
+            $limiteMinutos = $asignatura->horas_semana * 60;
+            $minRestante = null;
+
+            foreach ($grupoIds as $grupoId) {
+                $minutos = $minutosPorAsignaturaGrupo["{$asignatura->id}:{$grupoId}"] ?? 0;
+                $restante = $limiteMinutos - $minutos;
+
+                if ($minRestante === null || $restante < $minRestante) {
+                    $minRestante = $restante;
+                }
+            }
+
+            $resumen[$asignatura->id] = [
+                'horas_semana' => (float) $asignatura->horas_semana,
+                'asignadas' => round(($limiteMinutos - $minRestante) / 60, 2),
+                'restantes' => round(max($minRestante, 0) / 60, 2),
+            ];
+        }
+
+        return $resumen;
     }
 
     private function buscarConflicto(
@@ -216,10 +351,12 @@ class VerificarDisponibilidadAction
             return [false, 'El horario está fuera de la disponibilidad declarada del docente.'];
         }
 
-        // Respaldo explícito de la regla de 8 horas anclada al inicio del día.
-        $limiteMaximo = $this->aMinutos($bloques->first()->hora_inicio) + 8 * 60;
+        // Respaldo explícito del límite de horas laborales anclado al inicio del
+        // día: 8 horas de lunes a viernes, 12 horas los sábados.
+        $limiteHoras = $diaSemana === 6 ? 12 : 8;
+        $limiteMaximo = $this->aMinutos($bloques->first()->hora_inicio) + $limiteHoras * 60;
         if ($fin > $limiteMaximo) {
-            return [false, 'El horario excede el límite de 8 horas laborales del día.'];
+            return [false, "El horario excede el límite de {$limiteHoras} horas laborales del día."];
         }
 
         return [true, null];

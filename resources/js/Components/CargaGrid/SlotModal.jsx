@@ -7,6 +7,39 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 const DIAS = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
+// Minutos entre dos horas "HH:MM".
+const aMinutos = (hora) => {
+    const [h, m] = hora.split(':').map(Number);
+    return h * 60 + m;
+};
+
+// Renderiza la opción de una asignatura en el selector, anotando cuántas
+// horas de su cupo semanal quedan disponibles para el grupo seleccionado.
+function opcionAsignatura(a, horasPorAsignatura) {
+    const info = horasPorAsignatura[a.id];
+    const agotada = Boolean(info && info.restantes <= 0);
+
+    let etiqueta = a.nombre;
+    if (a.semestre) {
+        etiqueta += ` · sem. ${a.semestre}`;
+    }
+    if (a.horas_semana) {
+        if (agotada) {
+            etiqueta += ' — horas ya asignadas';
+        } else if (info) {
+            etiqueta += ` (quedan ${info.restantes}h de ${a.horas_semana}h)`;
+        } else {
+            etiqueta += ` (${a.horas_semana}h/semana)`;
+        }
+    }
+
+    return (
+        <option key={a.id} value={a.id} disabled={agotada}>
+            {etiqueta}
+        </option>
+    );
+}
+
 export default function SlotModal({
     show,
     onClose,
@@ -35,7 +68,10 @@ export default function SlotModal({
 
     const [ocupados, setOcupados] = useState({ aulas: [], grupos: [] });
     const [verificacion, setVerificacion] = useState(null);
+    const [horasInfo, setHorasInfo] = useState(null);
+    const [horasPorAsignatura, setHorasPorAsignatura] = useState({});
     const debounce = useRef(null);
+    const debounceHorasAsignaturas = useRef(null);
 
     // Al cambiar la selección de horas, resetea el formulario manteniendo el contexto
     // (o precarga los valores de la carga existente si se abrió en modo edición).
@@ -53,9 +89,35 @@ export default function SlotModal({
             }));
             setOcupados({ aulas: [], grupos: [] });
             setVerificacion(null);
+            setHorasInfo(null);
+            setHorasPorAsignatura({});
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [seleccion]);
+
+    // Horas restantes por asignatura para los grupos seleccionados, para anotar
+    // y deshabilitar opciones agotadas en el selector de asignatura.
+    useEffect(() => {
+        if (!show || !seleccion || data.grupo_ids.length === 0) {
+            setHorasPorAsignatura({});
+            return;
+        }
+
+        clearTimeout(debounceHorasAsignaturas.current);
+        debounceHorasAsignaturas.current = setTimeout(() => {
+            window.axios
+                .post(route('admin.cargas.horas-asignaturas'), {
+                    periodo_escolar_id: data.periodo_escolar_id,
+                    asignatura_ids: asignaturas.map((a) => a.id),
+                    grupo_ids: data.grupo_ids,
+                    ignorar_carga_id: cargaExistente?.id ?? null,
+                })
+                .then((res) => setHorasPorAsignatura(res.data.horas));
+        }, 250);
+
+        return () => clearTimeout(debounceHorasAsignaturas.current);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [show, seleccion, data.grupo_ids]);
 
     // Dry-run de verificación cada vez que cambian aula/grupos/asignatura (con debounce).
     useEffect(() => {
@@ -83,6 +145,7 @@ export default function SlotModal({
                         aulas: res.data.aulas_ocupadas,
                         grupos: res.data.grupos_ocupados,
                     });
+                    setHorasInfo(res.data.horas);
                 });
         }, 250);
 
@@ -99,9 +162,30 @@ export default function SlotModal({
             });
             return;
         }
+
+        // Si la asignatura tiene horas_semana definidas y aún quedarán horas por
+        // asignar después de guardar este bloque, se conserva la selección
+        // (asignatura, grupo(s) y aula) para que el admin siga asignando la misma
+        // clase hasta agotar su cupo semanal.
+        let continuar = null;
+        if (horasInfo) {
+            const duracionHoras = (aMinutos(data.hora_fin) - aMinutos(data.hora_inicio)) / 60;
+            const restantesDespues = horasInfo.restantes - duracionHoras;
+            if (restantesDespues > 0.01) {
+                continuar = {
+                    asignatura_id: data.asignatura_id,
+                    grupo_ids: data.grupo_ids,
+                    aula_id: data.aula_id,
+                    motivo: 'continuar',
+                    asignaturaNombre: asignaturas.find((a) => String(a.id) === String(data.asignatura_id))?.nombre ?? '',
+                    horasRestantes: Math.round(restantesDespues * 100) / 100,
+                };
+            }
+        }
+
         post(route('admin.cargas.store'), {
             preserveScroll: true,
-            onSuccess: () => onClose(true),
+            onSuccess: () => onClose(true, continuar),
         });
     };
 
@@ -208,15 +292,30 @@ export default function SlotModal({
                             onChange={(e) => setData('asignatura_id', e.target.value)}
                         >
                             <option value="">Selecciona una asignatura</option>
-                            {asignaturas.map((a) => (
-                                <option key={a.id} value={a.id}>
-                                    {a.nombre}
-                                    {a.semestre ? ` · sem. ${a.semestre}` : ''}
-                                    {a.horas_semana ? ` (${a.horas_semana}h/semana)` : ''}
-                                </option>
-                            ))}
+                            {data.dia_semana === 6 ? (
+                                <>
+                                    <optgroup label="MÓDULO 1">
+                                        {asignaturas.filter((a) => Number(a.modulo_sabatino) === 1).map((a) => opcionAsignatura(a, horasPorAsignatura))}
+                                    </optgroup>
+                                    <optgroup label="MÓDULO 2">
+                                        {asignaturas.filter((a) => Number(a.modulo_sabatino) === 2).map((a) => opcionAsignatura(a, horasPorAsignatura))}
+                                    </optgroup>
+                                    {asignaturas.some((a) => !a.modulo_sabatino) && (
+                                        <optgroup label="Sin módulo asignado">
+                                            {asignaturas.filter((a) => !a.modulo_sabatino).map((a) => opcionAsignatura(a, horasPorAsignatura))}
+                                        </optgroup>
+                                    )}
+                                </>
+                            ) : (
+                                asignaturas.map((a) => opcionAsignatura(a, horasPorAsignatura))
+                            )}
                         </SelectInput>
                         {errors.asignatura_id && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.asignatura_id}</p>}
+                        {horasInfo && (
+                            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                                {horasInfo.asignadas}h de {horasInfo.horas_semana}h asignadas a este grupo · quedan {horasInfo.restantes}h
+                            </p>
+                        )}
                     </div>
 
                     <div>
@@ -225,10 +324,12 @@ export default function SlotModal({
                         </label>
                         <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">
                             Selecciona uno o varios grupos si la clase se imparte a una combinación de grupos.
+                            {data.dia_semana === 6 && ' Los sábados solo se puede asignar a grupos sabatinos (terminados en "F", p. ej. 1F).'}
                         </p>
                         <div className="mt-1 max-h-40 space-y-1 overflow-y-auto rounded-md border border-slate-300 p-2 dark:border-slate-700">
                             {grupos.map((g) => {
-                                const ocupado = ocupados.grupos.includes(g.id) && !data.grupo_ids.includes(g.id);
+                                const noEsSabatino = data.dia_semana === 6 && !/f$/i.test(g.nombre.trim());
+                                const ocupado = (ocupados.grupos.includes(g.id) && !data.grupo_ids.includes(g.id)) || noEsSabatino;
                                 const marcado = data.grupo_ids.includes(g.id);
                                 return (
                                     <label
@@ -246,11 +347,12 @@ export default function SlotModal({
                                             disabled={ocupado}
                                             onChange={(e) => alternarGrupo(g.id, e.target.checked)}
                                         />
-                                        {g.nombre} ({g.matricula} alumnos)
+                                        {g.nombre}
+                                        {g.carrera_nombre ? ` · ${g.carrera_nombre}` : ''} ({g.matricula} alumnos)
                                         {g.hora_inicio && g.hora_fin
                                             ? ` · ${g.hora_inicio.slice(0, 5)}-${g.hora_fin.slice(0, 5)}`
                                             : ''}
-                                        {ocupado ? ' — ocupado' : ''}
+                                        {noEsSabatino ? ' — no es grupo sabatino' : ocupado ? ' — ocupado' : ''}
                                     </label>
                                 );
                             })}

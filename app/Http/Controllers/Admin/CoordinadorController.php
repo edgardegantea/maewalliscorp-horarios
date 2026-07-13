@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\CoordinadorStoreRequest;
+use App\Models\Carrera;
 use App\Models\RegistroActividad;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -15,13 +16,28 @@ use Inertia\Response;
 
 class CoordinadorController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        $busqueda = $request->string('q')->toString() ?: null;
+        $carreraId = $request->integer('carrera') ?: null;
+
+        $coordinadores = User::where('role', UserRole::Coordinador)
+            ->with('carrerasCoordinadas')
+            ->when($busqueda, fn ($q) => $q->where(fn ($q2) => $q2
+                ->where('name', 'ilike', "%{$busqueda}%")
+                ->orWhere('username', 'ilike', "%{$busqueda}%")
+                ->orWhere('email', 'ilike', "%{$busqueda}%")))
+            ->when($carreraId, fn ($q) => $q->whereHas('carrerasCoordinadas', fn ($q2) => $q2->where('carreras.id', $carreraId)))
+            ->orderBy('name')
+            ->get();
+
         return Inertia::render('Admin/Coordinadores/Index', [
-            'coordinadores' => User::where('role', UserRole::Coordinador)
-                ->with('carrerasCoordinadas')
-                ->orderBy('name')
-                ->get(),
+            'coordinadores' => $coordinadores,
+            'carreras' => Carrera::orderBy('nombre')->get(),
+            'filtros' => [
+                'q' => $busqueda,
+                'carrera' => $carreraId,
+            ],
         ]);
     }
 

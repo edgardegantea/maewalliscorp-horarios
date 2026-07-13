@@ -20,12 +20,26 @@ class AsignaturaController extends Controller
     public function index(Request $request): Response
     {
         $carreraIds = $this->carrerasVisibles($request)->pluck('id');
+        $busqueda = $request->string('q')->toString() ?: null;
+        $carreraId = $request->integer('carrera') ?: null;
+        $semestre = $request->integer('semestre') ?: null;
+
+        $asignaturas = Asignatura::with('carrera')
+            ->whereIn('carrera_id', $carreraIds)
+            ->when($busqueda, fn ($q) => $q->where(fn ($q2) => $q2->where('nombre', 'ilike', "%{$busqueda}%")->orWhere('clave', 'ilike', "%{$busqueda}%")))
+            ->when($carreraId, fn ($q) => $q->where('carrera_id', $carreraId))
+            ->when($semestre, fn ($q) => $q->where('semestre', $semestre))
+            ->orderBy('nombre')
+            ->get();
 
         return Inertia::render('Admin/Asignaturas/Index', [
-            'asignaturas' => Asignatura::with('carrera')
-                ->whereIn('carrera_id', $carreraIds)
-                ->orderBy('nombre')
-                ->get(),
+            'asignaturas' => $asignaturas,
+            'carreras' => $this->carrerasVisibles($request)->orderBy('nombre')->get(),
+            'filtros' => [
+                'q' => $busqueda,
+                'carrera' => $carreraId,
+                'semestre' => $semestre,
+            ],
         ]);
     }
 

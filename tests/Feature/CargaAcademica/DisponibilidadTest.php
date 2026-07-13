@@ -1,8 +1,8 @@
 <?php
 
 use App\Actions\Disponibilidad\GuardarDisponibilidadAction;
-use App\Models\Docente;
 use App\Models\DisponibilidadDocente;
+use App\Models\Docente;
 use App\Models\PeriodoEscolar;
 use App\Models\User;
 use Illuminate\Validation\ValidationException;
@@ -39,6 +39,51 @@ it('rechaza cuando el rango total del día excede 8 horas', function () {
     app(GuardarDisponibilidadAction::class)->ejecutar($docente->id, $periodo->id, [
         ['dia_semana' => 1, 'hora_inicio' => '07:00', 'hora_fin' => '11:00'],
         ['dia_semana' => 1, 'hora_inicio' => '13:00', 'hora_fin' => '17:00'],
+    ]);
+})->throws(ValidationException::class);
+
+it('permite hasta 12 horas de disponibilidad el sábado', function () {
+    [$docente, $periodo] = docentePeriodo();
+
+    app(GuardarDisponibilidadAction::class)->ejecutar($docente->id, $periodo->id, [
+        ['dia_semana' => 6, 'hora_inicio' => '07:00', 'hora_fin' => '19:00'],
+    ]);
+
+    expect(DisponibilidadDocente::where('docente_id', $docente->id)->where('dia_semana', 6)->count())->toBe(1);
+});
+
+it('rechaza cuando el rango total del sábado excede 12 horas', function () {
+    [$docente, $periodo] = docentePeriodo();
+
+    app(GuardarDisponibilidadAction::class)->ejecutar($docente->id, $periodo->id, [
+        ['dia_semana' => 6, 'hora_inicio' => '07:00', 'hora_fin' => '19:30'],
+    ]);
+})->throws(ValidationException::class);
+
+it('permite hasta 40 horas de disponibilidad en la semana', function () {
+    [$docente, $periodo] = docentePeriodo();
+
+    app(GuardarDisponibilidadAction::class)->ejecutar($docente->id, $periodo->id, [
+        ['dia_semana' => 1, 'hora_inicio' => '08:00', 'hora_fin' => '16:00'],
+        ['dia_semana' => 2, 'hora_inicio' => '08:00', 'hora_fin' => '16:00'],
+        ['dia_semana' => 3, 'hora_inicio' => '08:00', 'hora_fin' => '16:00'],
+        ['dia_semana' => 4, 'hora_inicio' => '08:00', 'hora_fin' => '16:00'],
+        ['dia_semana' => 5, 'hora_inicio' => '08:00', 'hora_fin' => '16:00'],
+    ]);
+
+    expect(DisponibilidadDocente::where('docente_id', $docente->id)->count())->toBe(5);
+});
+
+it('rechaza cuando la suma de horas de la semana excede 40 horas', function () {
+    [$docente, $periodo] = docentePeriodo();
+
+    app(GuardarDisponibilidadAction::class)->ejecutar($docente->id, $periodo->id, [
+        ['dia_semana' => 1, 'hora_inicio' => '08:00', 'hora_fin' => '16:00'],
+        ['dia_semana' => 2, 'hora_inicio' => '08:00', 'hora_fin' => '16:00'],
+        ['dia_semana' => 3, 'hora_inicio' => '08:00', 'hora_fin' => '16:00'],
+        ['dia_semana' => 4, 'hora_inicio' => '08:00', 'hora_fin' => '16:00'],
+        ['dia_semana' => 5, 'hora_inicio' => '08:00', 'hora_fin' => '16:00'],
+        ['dia_semana' => 6, 'hora_inicio' => '08:00', 'hora_fin' => '09:00'],
     ]);
 })->throws(ValidationException::class);
 

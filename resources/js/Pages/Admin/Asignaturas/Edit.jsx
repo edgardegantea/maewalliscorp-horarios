@@ -11,6 +11,7 @@ export default function Edit({ asignatura, carreras }) {
         clave: asignatura.clave ?? '',
         semestre: asignatura.semestre ?? '',
         horas_semana: asignatura.horas_semana ?? '',
+        modulo_sabatino: asignatura.modulo_sabatino ?? '',
     });
 
     const submit = (e) => {

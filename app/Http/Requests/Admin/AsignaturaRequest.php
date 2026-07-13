@@ -32,6 +32,7 @@ class AsignaturaRequest extends FormRequest
             ],
             'horas_semana' => ['nullable', 'integer', 'min:1', 'max:40'],
             'semestre' => ['nullable', 'integer', 'min:1', 'max:20'],
+            'modulo_sabatino' => ['nullable', 'integer', 'in:1,2'],
         ];
     }
 }
