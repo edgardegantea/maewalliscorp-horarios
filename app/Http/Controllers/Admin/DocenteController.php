@@ -11,6 +11,7 @@ use App\Imports\DocenteImport;
 use App\Models\Carrera;
 use App\Models\Docente;
 use App\Models\PeriodoEscolar;
+use App\Models\RegistroActividad;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -41,7 +42,7 @@ class DocenteController extends Controller
     {
         $datos = $request->validated();
 
-        DB::transaction(function () use ($datos) {
+        $docente = DB::transaction(function () use ($datos) {
             $user = User::create([
                 'name' => $datos['name'],
                 'username' => $datos['username'],
@@ -51,12 +52,14 @@ class DocenteController extends Controller
                 'email_verified_at' => now(),
             ]);
 
-            Docente::create([
+            return Docente::create([
                 'user_id' => $user->id,
                 'numero_empleado' => $datos['numero_empleado'] ?? null,
                 'telefono' => $datos['telefono'] ?? null,
             ]);
         });
+
+        RegistroActividad::registrar($request->user()->id, 'crear', 'docente', $docente->id, "Creó al docente {$datos['name']}");
 
         return redirect()->route('admin.docentes.index')->with('success', 'Docente creado.');
     }
@@ -89,13 +92,19 @@ class DocenteController extends Controller
             ]);
         });
 
+        RegistroActividad::registrar($request->user()->id, 'actualizar', 'docente', $docente->id, "Actualizó al docente {$datos['name']}");
+
         return redirect()->route('admin.docentes.index')->with('success', 'Docente actualizado.');
     }
 
-    public function destroy(Docente $docente): RedirectResponse
+    public function destroy(Request $request, Docente $docente): RedirectResponse
     {
+        $nombre = $docente->user->name;
+
         // Elimina también la cuenta de usuario asociada (login del docente).
         $docente->user()->delete();
+
+        RegistroActividad::registrar($request->user()->id, 'eliminar', 'docente', $docente->id, "Eliminó al docente {$nombre}");
 
         return redirect()->route('admin.docentes.index')->with('success', 'Docente eliminado.');
     }

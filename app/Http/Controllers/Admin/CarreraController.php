@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\UserRole;
 use App\Http\Controllers\Concerns\ImportsCsv;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\CarreraRequest;
 use App\Imports\CarreraImport;
 use App\Models\Carrera;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -37,8 +39,11 @@ class CarreraController extends Controller
 
     public function edit(Carrera $carrera): Response
     {
+        $carrera->load('coordinadores');
+
         return Inertia::render('Admin/Carreras/Edit', [
             'carrera' => $carrera,
+            'coordinadoresDisponibles' => User::where('role', UserRole::Coordinador)->orderBy('name')->get(['id', 'name']),
         ]);
     }
 

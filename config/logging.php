@@ -73,6 +73,14 @@ return [
             'replace_placeholders' => true,
         ],
 
+        'seguridad' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/seguridad.log'),
+            'level' => 'warning',
+            'days' => env('LOG_SEGURIDAD_DAYS', 90),
+            'replace_placeholders' => true,
+        ],
+
         'slack' => [
             'driver' => 'slack',
             'url' => env('LOG_SLACK_WEBHOOK_URL'),

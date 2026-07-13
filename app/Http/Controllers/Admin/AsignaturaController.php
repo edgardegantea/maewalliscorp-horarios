@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Concerns\ImportsCsv;
+use App\Http\Controllers\Concerns\ScopedByCarrera;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\AsignaturaRequest;
 use App\Imports\AsignaturaImport;
 use App\Models\Asignatura;
-use App\Models\Carrera;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -15,46 +15,62 @@ use Inertia\Response;
 
 class AsignaturaController extends Controller
 {
-    use ImportsCsv;
+    use ImportsCsv, ScopedByCarrera;
 
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        $carreraIds = $this->carrerasVisibles($request)->pluck('id');
+
         return Inertia::render('Admin/Asignaturas/Index', [
-            'asignaturas' => Asignatura::with('carrera')->orderBy('nombre')->get(),
+            'asignaturas' => Asignatura::with('carrera')
+                ->whereIn('carrera_id', $carreraIds)
+                ->orderBy('nombre')
+                ->get(),
         ]);
     }
 
-    public function create(): Response
+    public function create(Request $request): Response
     {
         return Inertia::render('Admin/Asignaturas/Create', [
-            'carreras' => Carrera::orderBy('nombre')->get(),
+            'carreras' => $this->carrerasVisibles($request)->orderBy('nombre')->get(),
         ]);
     }
 
     public function store(AsignaturaRequest $request): RedirectResponse
     {
-        Asignatura::create($request->validated());
+        $datos = $request->validated();
+        $this->autorizarCarrera($request, (int) $datos['carrera_id']);
+
+        Asignatura::create($datos);
 
         return redirect()->route('admin.asignaturas.index')->with('success', 'Asignatura creada.');
     }
 
-    public function edit(Asignatura $asignatura): Response
+    public function edit(Request $request, Asignatura $asignatura): Response
     {
+        $this->autorizarCarrera($request, $asignatura->carrera_id);
+
         return Inertia::render('Admin/Asignaturas/Edit', [
             'asignatura' => $asignatura,
-            'carreras' => Carrera::orderBy('nombre')->get(),
+            'carreras' => $this->carrerasVisibles($request)->orderBy('nombre')->get(),
         ]);
     }
 
     public function update(AsignaturaRequest $request, Asignatura $asignatura): RedirectResponse
     {
-        $asignatura->update($request->validated());
+        $this->autorizarCarrera($request, $asignatura->carrera_id);
+        $datos = $request->validated();
+        $this->autorizarCarrera($request, (int) $datos['carrera_id']);
+
+        $asignatura->update($datos);
 
         return redirect()->route('admin.asignaturas.index')->with('success', 'Asignatura actualizada.');
     }
 
-    public function destroy(Asignatura $asignatura): RedirectResponse
+    public function destroy(Request $request, Asignatura $asignatura): RedirectResponse
     {
+        $this->autorizarCarrera($request, $asignatura->carrera_id);
+
         $asignatura->delete();
 
         return redirect()->route('admin.asignaturas.index')->with('success', 'Asignatura eliminada.');

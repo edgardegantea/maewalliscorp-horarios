@@ -10,15 +10,27 @@ const accesosAdmin = [
     { name: 'admin.grupos.index', titulo: 'Grupos', desc: 'Administra grupos y su matrícula.', icon: 'user' },
 ];
 
+const accesosCoordinador = [
+    { name: 'admin.cargas.index', titulo: 'Cargas académicas', desc: 'Arma y publica los horarios de tus carreras.', icon: 'clipboard' },
+    { name: 'admin.grupos.index', titulo: 'Grupos', desc: 'Administra los grupos de tus carreras.', icon: 'user' },
+    { name: 'admin.asignaturas.index', titulo: 'Asignaturas', desc: 'Administra las asignaturas de tus carreras.', icon: 'book' },
+];
+
 const accesosDocente = [
     { name: 'docente.disponibilidad.edit', titulo: 'Mi disponibilidad', desc: 'Registra tus bloques de disponibilidad por periodo.', icon: 'clock' },
     { name: 'docente.horario', titulo: 'Mi horario', desc: 'Consulta tu horario de clases asignado.', icon: 'calendar' },
 ];
 
+const ACCESOS_POR_ROL = {
+    admin: accesosAdmin,
+    coordinador: accesosCoordinador,
+    docente: accesosDocente,
+};
+
 export default function Dashboard() {
     const user = usePage().props.auth.user;
     const esAdmin = user.role === 'admin';
-    const accesos = (esAdmin ? accesosAdmin : accesosDocente).filter((a) => route().has(a.name));
+    const accesos = (ACCESOS_POR_ROL[user.role] ?? accesosDocente).filter((a) => route().has(a.name));
 
     return (
         <AuthenticatedLayout header={<h2 className="text-base font-semibold text-slate-900 dark:text-white">Inicio</h2>}>
@@ -27,7 +39,13 @@ export default function Dashboard() {
             <div className="space-y-6">
                 <PageHeader
                     title={`Bienvenido, ${user.name}`}
-                    description={esAdmin ? 'Panel de administración del sistema de cargas académicas.' : 'Portal del docente.'}
+                    description={
+                        esAdmin
+                            ? 'Panel de administración del sistema de cargas académicas.'
+                            : user.role === 'coordinador'
+                              ? 'Panel de coordinación de carrera.'
+                              : 'Portal del docente.'
+                    }
                 />
 
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

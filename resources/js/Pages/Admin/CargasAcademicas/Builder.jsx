@@ -4,7 +4,7 @@ import WeekGrid from '@/Components/CargaGrid/WeekGrid';
 import Card from '@/Components/ui/Card';
 import PageHeader from '@/Components/ui/PageHeader';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import { useCallback, useEffect, useState } from 'react';
 
 export default function Builder({ periodo, carrera, docentes, asignaturas, grupos, aulas, slots }) {
@@ -33,24 +33,30 @@ export default function Builder({ periodo, carrera, docentes, asignaturas, grupo
     }, [cargarGrid]);
 
     const alSeleccionar = useCallback((sel) => {
-        setSeleccion(sel);
+        setSeleccion({ ...sel, cargaExistente: null });
         setModalAbierto(true);
     }, []);
+
+    const abrirEdicion = useCallback((celda) => {
+        setSeleccion({
+            dia_semana: dias.find((d) => d.horas.some((h) => h.carga_id === celda.carga_id)).dia_semana,
+            hora_inicio: celda.hora_inicio,
+            hora_fin: celda.hora_fin,
+            cargaExistente: {
+                id: celda.carga_id,
+                asignatura_id: celda.asignatura_id,
+                grupo_id: celda.grupo_id,
+                aula_id: celda.aula_id,
+            },
+        });
+        setModalAbierto(true);
+    }, [dias]);
 
     const cerrarModal = (guardado) => {
         setModalAbierto(false);
         setSeleccion(null);
         if (guardado) {
             cargarGrid();
-        }
-    };
-
-    const eliminarReservado = (celda) => {
-        if (confirm('¿Eliminar esta carga académica?')) {
-            router.delete(route('admin.cargas.destroy', celda.carga_id), {
-                preserveScroll: true,
-                onSuccess: () => cargarGrid(),
-            });
         }
     };
 
@@ -124,7 +130,7 @@ export default function Builder({ periodo, carrera, docentes, asignaturas, grupo
                                 dias={dias}
                                 slots={slots}
                                 onSeleccion={alSeleccionar}
-                                onClickReservado={eliminarReservado}
+                                onClickReservado={abrirEdicion}
                             />
                         )}
                     </Card>

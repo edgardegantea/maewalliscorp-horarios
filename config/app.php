@@ -56,6 +56,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Respaldos automáticos de base de datos
+    |--------------------------------------------------------------------------
+    |
+    | Controla si el comando `app:backup-database` se programa diariamente
+    | (ver routes/console.php). Deshabilitado por defecto hasta definir el
+    | destino final de almacenamiento de los respaldos.
+    |
+    */
+
+    'backups_db_enabled' => (bool) env('BACKUPS_DB_ENABLED', false),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |

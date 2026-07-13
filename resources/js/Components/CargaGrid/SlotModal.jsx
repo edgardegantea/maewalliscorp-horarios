@@ -2,8 +2,8 @@ import Modal from '@/Components/Modal';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import SelectInput from '@/Components/SelectInput';
-import { useForm } from '@inertiajs/react';
-import { useEffect, useRef, useState } from 'react';
+import { router, useForm } from '@inertiajs/react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 const DIAS = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
@@ -16,7 +16,10 @@ export default function SlotModal({
     grupos,
     aulas,
 }) {
-    const { data, setData, post, processing, errors, reset } = useForm({
+    const cargaExistente = seleccion?.cargaExistente ?? null;
+    const editando = Boolean(cargaExistente);
+
+    const { data, setData, post, put, processing, errors, reset } = useForm({
         periodo_escolar_id: contexto.periodo.id,
         carrera_id: contexto.carrera.id,
         docente_id: contexto.docenteId,
@@ -32,7 +35,8 @@ export default function SlotModal({
     const [verificacion, setVerificacion] = useState(null);
     const debounce = useRef(null);
 
-    // Al cambiar la selección de horas, resetea el formulario manteniendo el contexto.
+    // Al cambiar la selección de horas, resetea el formulario manteniendo el contexto
+    // (o precarga los valores de la carga existente si se abrió en modo edición).
     useEffect(() => {
         if (seleccion) {
             reset('asignatura_id', 'grupo_id', 'aula_id');
@@ -41,6 +45,9 @@ export default function SlotModal({
                 dia_semana: seleccion.dia_semana,
                 hora_inicio: seleccion.hora_inicio,
                 hora_fin: seleccion.hora_fin,
+                asignatura_id: cargaExistente?.asignatura_id ?? '',
+                grupo_id: cargaExistente?.grupo_id ?? '',
+                aula_id: cargaExistente?.aula_id ?? '',
             }));
             setOcupados({ aulas: [], grupos: [] });
             setVerificacion(null);
@@ -48,7 +55,7 @@ export default function SlotModal({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [seleccion]);
 
-    // Dry-run de verificación cada vez que cambian aula/grupo (con debounce).
+    // Dry-run de verificación cada vez que cambian aula/grupo/asignatura (con debounce).
     useEffect(() => {
         if (!show || !seleccion) {
             return;
@@ -66,6 +73,7 @@ export default function SlotModal({
                     aula_id: data.aula_id || null,
                     grupo_id: data.grupo_id || null,
                     asignatura_id: data.asignatura_id || null,
+                    ignorar_carga_id: cargaExistente?.id ?? null,
                 })
                 .then((res) => {
                     setVerificacion(res.data.resultado);
@@ -82,11 +90,40 @@ export default function SlotModal({
 
     const guardar = (e) => {
         e.preventDefault();
+        if (editando) {
+            put(route('admin.cargas.update', cargaExistente.id), {
+                preserveScroll: true,
+                onSuccess: () => onClose(true),
+            });
+            return;
+        }
         post(route('admin.cargas.store'), {
             preserveScroll: true,
             onSuccess: () => onClose(true),
         });
     };
+
+    const eliminar = () => {
+        if (confirm('¿Eliminar esta carga académica?')) {
+            router.delete(route('admin.cargas.destroy', cargaExistente.id), {
+                preserveScroll: true,
+                onSuccess: () => onClose(true),
+            });
+        }
+    };
+
+    const grupoSeleccionado = useMemo(
+        () => grupos.find((g) => String(g.id) === String(data.grupo_id)),
+        [grupos, data.grupo_id],
+    );
+    const aulaSeleccionada = useMemo(
+        () => aulas.find((a) => String(a.id) === String(data.aula_id)),
+        [aulas, data.aula_id],
+    );
+    const excedeCapacidad =
+        grupoSeleccionado?.matricula && aulaSeleccionada?.capacidad
+            ? grupoSeleccionado.matricula > aulaSeleccionada.capacidad
+            : false;
 
     if (!seleccion) {
         return null;
@@ -97,7 +134,9 @@ export default function SlotModal({
     return (
         <Modal show={show} onClose={() => onClose(false)}>
             <form onSubmit={guardar} className="p-6">
-                <h3 className="text-lg font-medium text-slate-900 dark:text-white">Nueva asignación</h3>
+                <h3 className="text-lg font-medium text-slate-900 dark:text-white">
+                    {editando ? 'Editar asignación' : 'Nueva asignación'}
+                </h3>
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                     {DIAS[seleccion.dia_semana]} · {seleccion.hora_inicio} a {seleccion.hora_fin}
                 </p>
@@ -109,6 +148,13 @@ export default function SlotModal({
                                 <li key={mensaje}>{mensaje}</li>
                             ))}
                         </ul>
+                    </div>
+                )}
+
+                {excedeCapacidad && (
+                    <div className="mt-3 rounded-md bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-500/10 dark:text-amber-400">
+                        El grupo tiene {grupoSeleccionado.matricula} alumnos, pero el aula solo tiene capacidad
+                        para {aulaSeleccionada.capacidad}. Puedes continuar, pero verifica que sea correcto.
                     </div>
                 )}
 
@@ -180,21 +226,34 @@ export default function SlotModal({
                     </div>
                 )}
 
-                <div className="mt-6 flex justify-end gap-3">
-                    <SecondaryButton type="button" onClick={() => onClose(false)}>
-                        Cancelar
-                    </SecondaryButton>
-                    <PrimaryButton
-                        disabled={
-                            processing ||
-                            !data.asignatura_id ||
-                            !data.grupo_id ||
-                            !data.aula_id ||
-                            (verificacion && !verificacion.valido)
-                        }
-                    >
-                        Guardar carga
-                    </PrimaryButton>
+                <div className="mt-6 flex items-center justify-between gap-3">
+                    {editando ? (
+                        <button
+                            type="button"
+                            onClick={eliminar}
+                            className="text-sm font-medium text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                        >
+                            Eliminar
+                        </button>
+                    ) : (
+                        <span />
+                    )}
+                    <div className="flex gap-3">
+                        <SecondaryButton type="button" onClick={() => onClose(false)}>
+                            Cancelar
+                        </SecondaryButton>
+                        <PrimaryButton
+                            disabled={
+                                processing ||
+                                !data.asignatura_id ||
+                                !data.grupo_id ||
+                                !data.aula_id ||
+                                (verificacion && !verificacion.valido)
+                            }
+                        >
+                            {editando ? 'Guardar cambios' : 'Guardar carga'}
+                        </PrimaryButton>
+                    </div>
                 </div>
             </form>
         </Modal>

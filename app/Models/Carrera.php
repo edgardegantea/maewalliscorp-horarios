@@ -2,15 +2,17 @@
 
 namespace App\Models;
 
+use Database\Factories\CarreraFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable(['nombre', 'clave', 'activo'])]
 class Carrera extends Model
 {
-    /** @use HasFactory<\Database\Factories\CarreraFactory> */
+    /** @use HasFactory<CarreraFactory> */
     use HasFactory;
 
     protected function casts(): array
@@ -38,5 +40,10 @@ class Carrera extends Model
     public function cargasAcademicas(): HasMany
     {
         return $this->hasMany(CargaAcademica::class);
+    }
+
+    public function coordinadores(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'coordinador_carrera');
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Actions\CargaAcademica\VerificarDisponibilidadAction;
+use App\Http\Controllers\Concerns\ScopedByCarrera;
 use App\Http\Controllers\Controller;
 use App\Models\Asignatura;
 use App\Models\Aula;
@@ -20,12 +21,16 @@ use Inertia\Response;
 
 class CargaAcademicaBuilderController extends Controller
 {
+    use ScopedByCarrera;
+
     public function show(Request $request): Response
     {
         $datos = $request->validate([
             'periodo' => ['required', 'exists:periodos_escolares,id'],
             'carrera' => ['required', 'exists:carreras,id'],
         ]);
+
+        $this->autorizarCarrera($request, (int) $datos['carrera']);
 
         $periodo = PeriodoEscolar::findOrFail($datos['periodo']);
         $carrera = Carrera::findOrFail($datos['carrera']);
@@ -58,6 +63,8 @@ class CargaAcademicaBuilderController extends Controller
             'carrera' => ['required', 'exists:carreras,id'],
             'docente' => ['required', 'exists:docentes,id'],
         ]);
+
+        $this->autorizarCarrera($request, (int) $datos['carrera']);
 
         $periodoId = (int) $datos['periodo'];
         $carreraId = (int) $datos['carrera'];
@@ -99,8 +106,11 @@ class CargaAcademicaBuilderController extends Controller
                         'estado' => $esDeEstaCarrera ? 'reservado_actual' : 'reservado_otro',
                         'carga_id' => $carga->id,
                         'asignatura' => $carga->asignatura->nombre,
+                        'asignatura_id' => $carga->asignatura_id,
                         'grupo' => $carga->grupo->nombre,
+                        'grupo_id' => $carga->grupo_id,
                         'aula' => $carga->aula->nombre,
+                        'aula_id' => $carga->aula_id,
                         'hora_inicio' => Horario::hhmm($carga->hora_inicio),
                         'hora_fin' => Horario::hhmm($carga->hora_fin),
                     ];

@@ -5,9 +5,10 @@ namespace App\Http\Controllers\Admin;
 use App\Actions\Disponibilidad\GuardarDisponibilidadAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\DisponibilidadRequest;
-use App\Models\Docente;
 use App\Models\DisponibilidadDocente;
+use App\Models\Docente;
 use App\Models\PeriodoEscolar;
+use App\Models\RegistroActividad;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -35,6 +36,15 @@ class DisponibilidadDocenteController extends Controller
         $datos = $request->validated();
 
         $accion->ejecutar($docente->id, (int) $datos['periodo_escolar_id'], $datos['bloques']);
+
+        $docente->loadMissing('user');
+        RegistroActividad::registrar(
+            $request->user()->id,
+            'actualizar',
+            'disponibilidad_docente',
+            $docente->id,
+            "Actualizó la disponibilidad de {$docente->user->name}",
+        );
 
         return redirect()
             ->route('admin.docentes.disponibilidad.edit', [$docente, $datos['periodo_escolar_id']])

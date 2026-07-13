@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Exports\ConcentradoGeneralExport;
 use App\Exports\ConcentradoHorarioExport;
+use App\Http\Controllers\Concerns\ScopedByCarrera;
 use App\Http\Controllers\Controller;
 use App\Mail\ConcentradoDescargado;
 use App\Models\Carrera;
@@ -18,12 +19,16 @@ use Throwable;
 
 class ConcentradoExportController extends Controller
 {
+    use ScopedByCarrera;
+
     public function __invoke(Request $request): BinaryFileResponse
     {
         $datos = $request->validate([
             'periodo' => ['required', 'exists:periodos_escolares,id'],
             'carrera' => ['required', 'exists:carreras,id'],
         ]);
+
+        $this->autorizarCarrera($request, (int) $datos['carrera']);
 
         $periodo = PeriodoEscolar::findOrFail($datos['periodo']);
         $carrera = Carrera::findOrFail($datos['carrera']);

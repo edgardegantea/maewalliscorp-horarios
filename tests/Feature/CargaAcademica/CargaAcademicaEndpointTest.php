@@ -1,14 +1,17 @@
 <?php
 
+use App\Actions\CargaAcademica\GuardarCargaAcademicaAction;
+use App\Mail\CargaAcademicaNotificacion;
 use App\Models\Asignatura;
 use App\Models\Aula;
 use App\Models\Carrera;
+use App\Models\DisponibilidadDocente;
 use App\Models\Docente;
 use App\Models\DocenteCarrera;
-use App\Models\DisponibilidadDocente;
 use App\Models\Grupo;
 use App\Models\PeriodoEscolar;
 use App\Models\User;
+use Illuminate\Support\Facades\Mail;
 
 function contextoEndpoint(): array
 {
@@ -69,6 +72,63 @@ it('rechaza guardar si el docente no está asignado a la carrera', function () {
         ->assertSessionHasErrors('docente_id');
 
     $this->assertDatabaseCount('cargas_academicas', 0);
+});
+
+it('un admin puede editar una carga académica existente', function () {
+    $admin = User::factory()->admin()->create();
+    $c = contextoEndpoint();
+
+    $carga = app(GuardarCargaAcademicaAction::class)->ejecutar(payload($c), $admin->id);
+
+    $aulaB = Aula::create(['nombre' => 'B-201']);
+
+    $this->actingAs($admin)
+        ->put(route('admin.cargas.update', $carga->id), payload($c, ['aula_id' => $aulaB->id, 'hora_inicio' => '09:00', 'hora_fin' => '10:00']))
+        ->assertRedirect();
+
+    expect($carga->fresh()->aula_id)->toBe($aulaB->id);
+    expect($carga->fresh()->hora_inicio)->toBe('09:00:00');
+    $this->assertDatabaseCount('cargas_academicas', 1);
+});
+
+it('al editar, una carga puede reocupar su propio horario sin marcarse como empalme consigo misma', function () {
+    $admin = User::factory()->admin()->create();
+    $c = contextoEndpoint();
+
+    $carga = app(GuardarCargaAcademicaAction::class)->ejecutar(payload($c), $admin->id);
+
+    // Actualiza solo el aula, manteniendo el mismo horario: no debe fallar por "empalme consigo misma".
+    $this->actingAs($admin)
+        ->put(route('admin.cargas.update', $carga->id), payload($c))
+        ->assertRedirect()
+        ->assertSessionDoesntHaveErrors();
+});
+
+it('notifica por correo al docente cuando se le asigna una carga académica', function () {
+    Mail::fake();
+
+    $admin = User::factory()->admin()->create();
+    $c = contextoEndpoint();
+
+    $this->actingAs($admin)->post(route('admin.cargas.store'), payload($c));
+
+    Mail::assertSent(CargaAcademicaNotificacion::class, function ($mail) use ($c) {
+        return $mail->hasTo($c['docente']->user->email) && $mail->accion === CargaAcademicaNotificacion::ASIGNADA;
+    });
+});
+
+it('notifica por correo al docente cuando se elimina una de sus cargas académicas', function () {
+    Mail::fake();
+
+    $admin = User::factory()->admin()->create();
+    $c = contextoEndpoint();
+    $carga = app(GuardarCargaAcademicaAction::class)->ejecutar(payload($c), $admin->id);
+
+    $this->actingAs($admin)->delete(route('admin.cargas.destroy', $carga->id));
+
+    Mail::assertSent(CargaAcademicaNotificacion::class, function ($mail) use ($c) {
+        return $mail->hasTo($c['docente']->user->email) && $mail->accion === CargaAcademicaNotificacion::ELIMINADA;
+    });
 });
 
 it('rechaza guardar si el grupo no pertenece a la carrera', function () {

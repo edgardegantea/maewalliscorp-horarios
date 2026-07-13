@@ -2,9 +2,10 @@ import Card from '@/Components/ui/Card';
 import PageHeader from '@/Components/ui/PageHeader';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm } from '@inertiajs/react';
+import Coordinadores from './Partials/Coordinadores';
 import Form from './Partials/Form';
 
-export default function Edit({ carrera }) {
+export default function Edit({ carrera, coordinadoresDisponibles }) {
     const { data, setData, put, processing, errors } = useForm({
         nombre: carrera.nombre,
         clave: carrera.clave,
@@ -38,6 +39,8 @@ export default function Edit({ carrera }) {
                         onSubmit={submit}
                         cancelHref={route('admin.carreras.index')}
                     />
+
+                    <Coordinadores carrera={carrera} coordinadoresDisponibles={coordinadoresDisponibles} />
                 </Card>
             </div>
         </AuthenticatedLayout>

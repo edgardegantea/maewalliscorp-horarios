@@ -59,4 +59,11 @@ class UserFactory extends Factory
             'role' => UserRole::Docente,
         ]);
     }
+
+    public function coordinador(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => UserRole::Coordinador,
+        ]);
+    }
 }

@@ -9,10 +9,19 @@ const adminLinks = [
     { name: 'dashboard', label: 'Dashboard', icon: 'home' },
     { name: 'admin.periodos.index', label: 'Periodos', icon: 'calendar' },
     { name: 'admin.carreras.index', label: 'Carreras', icon: 'academicCap' },
+    { name: 'admin.coordinadores.index', label: 'Coordinadores', icon: 'user' },
     { name: 'admin.docentes.index', label: 'Docentes', icon: 'users' },
     { name: 'admin.asignaturas.index', label: 'Asignaturas', icon: 'book' },
     { name: 'admin.grupos.index', label: 'Grupos', icon: 'user' },
     { name: 'admin.aulas.index', label: 'Aulas', icon: 'building' },
+    { name: 'admin.cargas.index', label: 'Cargas académicas', icon: 'clipboard' },
+    { name: 'admin.auditoria.index', label: 'Auditoría', icon: 'listBullet' },
+];
+
+const coordinadorLinks = [
+    { name: 'dashboard', label: 'Dashboard', icon: 'home' },
+    { name: 'admin.asignaturas.index', label: 'Asignaturas', icon: 'book' },
+    { name: 'admin.grupos.index', label: 'Grupos', icon: 'user' },
     { name: 'admin.cargas.index', label: 'Cargas académicas', icon: 'clipboard' },
 ];
 
@@ -21,6 +30,12 @@ const docenteLinks = [
     { name: 'docente.disponibilidad.edit', label: 'Mi disponibilidad', icon: 'clock' },
     { name: 'docente.horario', label: 'Mi horario', icon: 'calendar' },
 ];
+
+const LINKS_POR_ROL = {
+    admin: adminLinks,
+    coordinador: coordinadorLinks,
+    docente: docenteLinks,
+};
 
 function estaActivo(name) {
     if (name === 'dashboard') {
@@ -78,9 +93,7 @@ export default function AuthenticatedLayout({ header, children }) {
     const user = usePage().props.auth.user;
     const [menuAbierto, setMenuAbierto] = useState(false);
 
-    const links = (user.role === 'admin' ? adminLinks : docenteLinks).filter((link) =>
-        route().has(link.name),
-    );
+    const links = (LINKS_POR_ROL[user.role] ?? docenteLinks).filter((link) => route().has(link.name));
 
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
