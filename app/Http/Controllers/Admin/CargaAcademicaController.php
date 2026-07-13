@@ -36,7 +36,7 @@ class CargaAcademicaController extends Controller
         $grupos = collect();
 
         if ($periodoId && $carreraId) {
-            $cargas = CargaAcademica::with(['docente.user', 'asignatura', 'grupo', 'aula'])
+            $cargas = CargaAcademica::with(['docente.user', 'asignatura', 'grupos', 'aula'])
                 ->where('periodo_escolar_id', $periodoId)
                 ->where('carrera_id', $carreraId)
                 ->orderBy('dia_semana')
@@ -45,17 +45,17 @@ class CargaAcademicaController extends Controller
 
             // Organizado por grupo (dentro del periodo y carrera ya seleccionados),
             // incluyendo los grupos sin cargas para que se vean como pendientes.
+            // Una carga con combinación de grupos aparece en la sección de cada
+            // grupo al que pertenece.
             $todosLosGrupos = Grupo::where('periodo_escolar_id', $periodoId)
                 ->where('carrera_id', $carreraId)
                 ->orderBy('semestre')
                 ->orderBy('nombre')
                 ->get();
 
-            $cargasPorGrupo = $cargas->groupBy('grupo_id');
-
             $grupos = $todosLosGrupos->map(fn ($grupo) => [
                 'grupo' => $grupo,
-                'cargas' => $cargasPorGrupo->get($grupo->id, collect())->values(),
+                'cargas' => $cargas->filter(fn (CargaAcademica $c) => $c->grupos->contains('id', $grupo->id))->values(),
             ]);
         }
 
@@ -73,7 +73,7 @@ class CargaAcademicaController extends Controller
         $this->autorizarCarrera($request, (int) $request->validated('carrera_id'));
 
         $carga = $accion->ejecutar($request->validated(), $request->user()->id);
-        $carga->loadMissing(['docente.user', 'asignatura', 'grupo', 'aula', 'periodoEscolar']);
+        $carga->loadMissing(['docente.user', 'asignatura', 'grupos', 'aula', 'periodoEscolar']);
 
         $this->notificarDocente($carga, CargaAcademicaNotificacion::ASIGNADA);
         RegistroActividad::registrar(
@@ -81,7 +81,7 @@ class CargaAcademicaController extends Controller
             'crear',
             'carga_academica',
             $carga->id,
-            "Asignó a {$carga->docente->user->name} · {$carga->asignatura->nombre} · {$carga->grupo->nombre} · {$carga->aula->nombre}",
+            "Asignó a {$carga->docente->user->name} · {$carga->asignatura->nombre} · {$carga->nombreGrupos()} · {$carga->aula->nombre}",
         );
 
         return back()->with('success', 'Carga académica guardada.');
@@ -93,7 +93,7 @@ class CargaAcademicaController extends Controller
         $this->autorizarCarrera($request, (int) $request->validated('carrera_id'));
 
         $carga = $accion->actualizar($carga, $request->validated(), $request->user()->id);
-        $carga->loadMissing(['docente.user', 'asignatura', 'grupo', 'aula', 'periodoEscolar']);
+        $carga->loadMissing(['docente.user', 'asignatura', 'grupos', 'aula', 'periodoEscolar']);
 
         $this->notificarDocente($carga, CargaAcademicaNotificacion::ACTUALIZADA);
         RegistroActividad::registrar(
@@ -101,7 +101,7 @@ class CargaAcademicaController extends Controller
             'actualizar',
             'carga_academica',
             $carga->id,
-            "Actualizó la clase de {$carga->docente->user->name} · {$carga->asignatura->nombre} · {$carga->grupo->nombre}",
+            "Actualizó la clase de {$carga->docente->user->name} · {$carga->asignatura->nombre} · {$carga->nombreGrupos()}",
         );
 
         return back()->with('success', 'Carga académica actualizada.');
@@ -111,14 +111,14 @@ class CargaAcademicaController extends Controller
     {
         $this->autorizarCarrera($request, $carga->carrera_id);
 
-        $carga->load(['docente.user', 'asignatura', 'grupo', 'aula', 'periodoEscolar']);
+        $carga->load(['docente.user', 'asignatura', 'grupos', 'aula', 'periodoEscolar']);
         $this->notificarDocente($carga, CargaAcademicaNotificacion::ELIMINADA);
         RegistroActividad::registrar(
             $request->user()->id,
             'eliminar',
             'carga_academica',
             $carga->id,
-            "Eliminó la clase de {$carga->docente->user->name} · {$carga->asignatura->nombre} · {$carga->grupo->nombre}",
+            "Eliminó la clase de {$carga->docente->user->name} · {$carga->asignatura->nombre} · {$carga->nombreGrupos()}",
         );
 
         $carga->delete();
@@ -132,7 +132,7 @@ class CargaAcademicaController extends Controller
      */
     private function notificarDocente(CargaAcademica $carga, string $accion): void
     {
-        $carga->loadMissing(['docente.user', 'asignatura', 'grupo', 'aula', 'periodoEscolar']);
+        $carga->loadMissing(['docente.user', 'asignatura', 'grupos', 'aula', 'periodoEscolar']);
         $email = $carga->docente->user->email ?? null;
 
         if (! $email) {

@@ -69,6 +69,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Cierre de sesión por inactividad
+    |--------------------------------------------------------------------------
+    |
+    | Minutos de inactividad en el navegador antes de cerrar sesión
+    | automáticamente. 0 desactiva la función.
+    |
+    */
+
+    'inactivity_timeout_minutes' => (int) env('INACTIVITY_TIMEOUT_MINUTES', 30),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |

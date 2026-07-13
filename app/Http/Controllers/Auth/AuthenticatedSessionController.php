@@ -31,6 +31,21 @@ class AuthenticatedSessionController extends Controller
     {
         $request->authenticate();
 
+        $usuario = Auth::user();
+
+        if ($usuario->hasTwoFactorEnabled()) {
+            // Aún no se confía en esta sesión: se cierra la que abrió
+            // authenticate() y se retoma solo tras validar el código.
+            $remember = $request->boolean('remember');
+            Auth::guard('web')->logout();
+
+            $request->session()->regenerate();
+            $request->session()->put('login.2fa.id', $usuario->id);
+            $request->session()->put('login.2fa.remember', $remember);
+
+            return redirect()->route('two-factor.challenge');
+        }
+
         $request->session()->regenerate();
 
         return redirect()->intended(route('dashboard', absolute: false));

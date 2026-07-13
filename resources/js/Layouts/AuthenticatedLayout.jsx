@@ -1,6 +1,7 @@
 import Dropdown from '@/Components/Dropdown';
 import FlashBanner from '@/Components/FlashBanner';
 import Icon from '@/Components/Icon';
+import InactivityLogout from '@/Components/InactivityLogout';
 import ThemeToggle from '@/Components/ThemeToggle';
 import { Link, usePage } from '@inertiajs/react';
 import { useState } from 'react';
@@ -15,6 +16,9 @@ const adminLinks = [
     { name: 'admin.grupos.index', label: 'Grupos', icon: 'user' },
     { name: 'admin.aulas.index', label: 'Aulas', icon: 'building' },
     { name: 'admin.cargas.index', label: 'Cargas académicas', icon: 'clipboard' },
+    { name: 'admin.reportes.carga-docente', label: 'Carga de trabajo', icon: 'chartBar' },
+    { name: 'admin.reportes.utilizacion-aulas', label: 'Utilización de aulas', icon: 'chartBar' },
+    { name: 'admin.dias-no-laborables.index', label: 'Días no laborables', icon: 'calendar' },
     { name: 'admin.auditoria.index', label: 'Auditoría', icon: 'listBullet' },
 ];
 
@@ -23,6 +27,7 @@ const coordinadorLinks = [
     { name: 'admin.asignaturas.index', label: 'Asignaturas', icon: 'book' },
     { name: 'admin.grupos.index', label: 'Grupos', icon: 'user' },
     { name: 'admin.cargas.index', label: 'Cargas académicas', icon: 'clipboard' },
+    { name: 'admin.reportes.carga-docente', label: 'Carga de trabajo', icon: 'chartBar' },
 ];
 
 const docenteLinks = [
@@ -153,6 +158,7 @@ export default function AuthenticatedLayout({ header, children }) {
                 </header>
 
                 <FlashBanner />
+                <InactivityLogout />
 
                 <main className="flex-1 px-4 py-8 sm:px-6 lg:px-8">{children}</main>
             </div>

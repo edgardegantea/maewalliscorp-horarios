@@ -12,6 +12,8 @@ export default function Edit({ grupo, carreras, periodos }) {
         semestre: grupo.semestre ?? '',
         matricula: grupo.matricula,
         modalidad: grupo.modalidad,
+        hora_inicio: grupo.hora_inicio?.slice(0, 5) ?? '',
+        hora_fin: grupo.hora_fin?.slice(0, 5) ?? '',
     });
 
     const submit = (e) => {

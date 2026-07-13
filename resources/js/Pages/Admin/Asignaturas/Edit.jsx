@@ -9,6 +9,7 @@ export default function Edit({ asignatura, carreras }) {
         carrera_id: asignatura.carrera_id,
         nombre: asignatura.nombre,
         clave: asignatura.clave ?? '',
+        semestre: asignatura.semestre ?? '',
         horas_semana: asignatura.horas_semana ?? '',
     });
 

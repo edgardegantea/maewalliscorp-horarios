@@ -64,6 +64,22 @@ export default function Form({ data, setData, errors, processing, onSubmit, canc
                 </div>
             </div>
 
+            <div>
+                <InputLabel htmlFor="semestre" value="Semestre (opcional)" />
+                <TextInput
+                    id="semestre"
+                    type="number"
+                    min="1"
+                    className="mt-1 block w-full sm:w-1/2"
+                    value={data.semestre ?? ''}
+                    onChange={(e) => setData('semestre', e.target.value)}
+                />
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    Si lo defines, se mostrará una advertencia al asignar esta materia a un grupo de otro semestre.
+                </p>
+                <InputError message={errors.semestre} className="mt-2" />
+            </div>
+
             <div className="flex items-center gap-4">
                 <PrimaryButton disabled={processing}>Guardar</PrimaryButton>
                 <Link href={cancelHref} className="text-sm text-slate-600 underline dark:text-slate-400 dark:hover:text-slate-200">

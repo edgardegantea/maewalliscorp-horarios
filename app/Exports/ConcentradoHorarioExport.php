@@ -3,8 +3,8 @@
 namespace App\Exports;
 
 use App\Exports\Sheets\DocenteHorarioSheet;
-use App\Models\Carrera;
 use App\Models\CargaAcademica;
+use App\Models\Carrera;
 use App\Models\PeriodoEscolar;
 use Maatwebsite\Excel\Concerns\WithMultipleSheets;
 
@@ -22,7 +22,7 @@ class ConcentradoHorarioExport implements WithMultipleSheets
      */
     public function sheets(): array
     {
-        $cargas = CargaAcademica::with(['docente.user', 'asignatura', 'grupo', 'aula'])
+        $cargas = CargaAcademica::with(['docente.user', 'asignatura', 'grupos', 'aula'])
             ->where('periodo_escolar_id', $this->periodo->id)
             ->where('carrera_id', $this->carrera->id)
             ->get();

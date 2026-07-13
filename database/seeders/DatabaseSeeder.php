@@ -6,9 +6,9 @@ use App\Models\Asignatura;
 use App\Models\Aula;
 use App\Models\CargaAcademica;
 use App\Models\Carrera;
+use App\Models\DisponibilidadDocente;
 use App\Models\Docente;
 use App\Models\DocenteCarrera;
-use App\Models\DisponibilidadDocente;
 use App\Models\Grupo;
 use App\Models\PeriodoEscolar;
 use App\Models\User;
@@ -162,18 +162,18 @@ class DatabaseSeeder extends Seeder
         // nunca choquen entre sí, incluso entre docentes de distinta carrera que
         // comparten el mismo día/hora (el aula es un recurso compartido).
         $asignacion = function (Docente $docente, Carrera $carrera, int $dia, string $inicio, string $fin, int $indiceAula) use ($asignaturasPorCarrera, $gruposPorCarrera, $aulas, $periodo, $admin) {
-            CargaAcademica::create([
+            $carga = CargaAcademica::create([
                 'periodo_escolar_id' => $periodo->id,
                 'carrera_id' => $carrera->id,
                 'docente_id' => $docente->id,
                 'asignatura_id' => $asignaturasPorCarrera[$carrera->id]->random()->id,
-                'grupo_id' => $gruposPorCarrera[$carrera->id]->random()->id,
                 'aula_id' => $aulas[$indiceAula]->id,
                 'dia_semana' => $dia,
                 'hora_inicio' => $inicio,
                 'hora_fin' => $fin,
                 'created_by' => $admin->id,
             ]);
+            $carga->grupos()->attach($gruposPorCarrera[$carrera->id]->random()->id);
         };
 
         $asignacion($docentes[0], $carreraIsc, 1, '08:00', '09:00', 0);

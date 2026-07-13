@@ -31,6 +31,7 @@ class AsignaturaRequest extends FormRequest
                 Rule::unique('asignaturas', 'clave')->where('carrera_id', $this->input('carrera_id'))->ignore($asignatura),
             ],
             'horas_semana' => ['nullable', 'integer', 'min:1', 'max:40'],
+            'semestre' => ['nullable', 'integer', 'min:1', 'max:20'],
         ];
     }
 }

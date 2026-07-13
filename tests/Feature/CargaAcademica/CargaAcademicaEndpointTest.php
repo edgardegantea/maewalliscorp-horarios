@@ -34,7 +34,7 @@ function payload(array $c, array $override = []): array
         'carrera_id' => $c['carrera']->id,
         'docente_id' => $c['docente']->id,
         'asignatura_id' => $c['asignatura']->id,
-        'grupo_id' => $c['grupo']->id,
+        'grupo_ids' => [$c['grupo']->id],
         'aula_id' => $c['aula']->id,
         'dia_semana' => 1,
         'hora_inicio' => '08:00',
@@ -140,6 +140,6 @@ it('rechaza guardar si el grupo no pertenece a la carrera', function () {
 
     $this->actingAs($admin)
         ->from(route('admin.cargas.index'))
-        ->post(route('admin.cargas.store'), payload($c, ['grupo_id' => $grupoAjeno->id]))
-        ->assertSessionHasErrors('grupo_id');
+        ->post(route('admin.cargas.store'), payload($c, ['grupo_ids' => [$grupoAjeno->id]]))
+        ->assertSessionHasErrors('grupo_ids.0');
 });

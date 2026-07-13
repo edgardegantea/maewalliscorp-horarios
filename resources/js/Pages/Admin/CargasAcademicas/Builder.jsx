@@ -13,6 +13,7 @@ export default function Builder({ periodo, carrera, docentes, asignaturas, grupo
     const [cargando, setCargando] = useState(false);
     const [seleccion, setSeleccion] = useState(null);
     const [modalAbierto, setModalAbierto] = useState(false);
+    const [plantilla, setPlantilla] = useState(null);
 
     const cargarGrid = useCallback(() => {
         if (!docenteId) {
@@ -33,8 +34,16 @@ export default function Builder({ periodo, carrera, docentes, asignaturas, grupo
     }, [cargarGrid]);
 
     const alSeleccionar = useCallback((sel) => {
-        setSeleccion({ ...sel, cargaExistente: null });
+        setSeleccion({ ...sel, cargaExistente: null, prellenado: plantilla });
+        setPlantilla(null);
         setModalAbierto(true);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [plantilla]);
+
+    const duplicar = useCallback((datos) => {
+        setPlantilla(datos);
+        setModalAbierto(false);
+        setSeleccion(null);
     }, []);
 
     const abrirEdicion = useCallback((celda) => {
@@ -45,7 +54,7 @@ export default function Builder({ periodo, carrera, docentes, asignaturas, grupo
             cargaExistente: {
                 id: celda.carga_id,
                 asignatura_id: celda.asignatura_id,
-                grupo_id: celda.grupo_id,
+                grupo_ids: celda.grupo_ids,
                 aula_id: celda.aula_id,
             },
         });
@@ -112,6 +121,19 @@ export default function Builder({ periodo, carrera, docentes, asignaturas, grupo
                     </div>
                 </Card>
 
+                {plantilla && (
+                    <div className="flex items-center justify-between rounded-lg bg-indigo-50 p-4 text-sm text-indigo-800 ring-1 ring-inset ring-indigo-600/20 dark:bg-indigo-500/10 dark:text-indigo-400 dark:ring-indigo-500/20">
+                        <span>Selecciona una hora en el grid para duplicar ahí la clase copiada.</span>
+                        <button
+                            type="button"
+                            onClick={() => setPlantilla(null)}
+                            className="font-medium underline hover:no-underline"
+                        >
+                            Cancelar
+                        </button>
+                    </div>
+                )}
+
                 {docentes.length === 0 ? (
                     <p className="rounded-lg bg-amber-50 p-4 text-sm text-amber-800 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-400 dark:ring-amber-500/20">
                         No hay docentes asignados a esta carrera en este periodo. Asigna docentes desde su
@@ -121,7 +143,7 @@ export default function Builder({ periodo, carrera, docentes, asignaturas, grupo
                     <Card>
                         <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
                             Haz clic en una hora disponible o arrastra para seleccionar un rango contiguo. Se
-                            abrirá una ventana para elegir asignatura, grupo y aula.
+                            abrirá una ventana para elegir asignatura, grupo(s) y aula.
                         </p>
                         {cargando || !dias ? (
                             <p className="py-8 text-center text-sm text-slate-400 dark:text-slate-500">Cargando horario…</p>
@@ -146,6 +168,7 @@ export default function Builder({ periodo, carrera, docentes, asignaturas, grupo
                     asignaturas={asignaturas}
                     grupos={grupos}
                     aulas={aulas}
+                    onDuplicar={duplicar}
                 />
             )}
         </AuthenticatedLayout>

@@ -100,6 +100,36 @@ export default function Form({ data, setData, errors, processing, onSubmit, canc
                 </div>
             </div>
 
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                <div>
+                    <InputLabel htmlFor="hora_inicio" value="Horario del grupo — inicio (opcional)" />
+                    <TextInput
+                        id="hora_inicio"
+                        type="time"
+                        className="mt-1 block w-full"
+                        value={data.hora_inicio ?? ''}
+                        onChange={(e) => setData('hora_inicio', e.target.value)}
+                    />
+                    <InputError message={errors.hora_inicio} className="mt-2" />
+                </div>
+
+                <div>
+                    <InputLabel htmlFor="hora_fin" value="Horario del grupo — fin (opcional)" />
+                    <TextInput
+                        id="hora_fin"
+                        type="time"
+                        className="mt-1 block w-full"
+                        value={data.hora_fin ?? ''}
+                        onChange={(e) => setData('hora_fin', e.target.value)}
+                    />
+                    <InputError message={errors.hora_fin} className="mt-2" />
+                </div>
+            </div>
+            <p className="-mt-4 text-xs text-slate-500 dark:text-slate-400">
+                Si defines un horario, las cargas académicas asignadas a este grupo deberán caer dentro de ese
+                rango (además de la disponibilidad del docente).
+            </p>
+
             <div className="flex items-center gap-4">
                 <PrimaryButton disabled={processing}>Guardar</PrimaryButton>
                 <Link href={cancelHref} className="text-sm text-slate-600 underline dark:text-slate-400 dark:hover:text-slate-200">

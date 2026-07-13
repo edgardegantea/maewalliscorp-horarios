@@ -3,10 +3,12 @@
 namespace App\Exports;
 
 use App\Models\CargaAcademica;
+use App\Models\Carrera;
 use App\Models\Grupo;
 use App\Models\PeriodoEscolar;
 use App\Support\Horario;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromView;
 use Maatwebsite\Excel\Concerns\WithTitle;
 
@@ -74,7 +76,7 @@ class ConcentradoGeneralExport implements FromView, WithTitle
 
         foreach ($grupos as $grupo) {
             $cargas = CargaAcademica::with(['asignatura', 'docente.user', 'aula'])
-                ->where('grupo_id', $grupo->id)
+                ->whereHas('grupos', fn ($q) => $q->where('grupos.id', $grupo->id))
                 ->orderBy('hora_inicio')
                 ->get();
 
@@ -118,7 +120,7 @@ class ConcentradoGeneralExport implements FromView, WithTitle
      * Asigna un color de la paleta a cada carrera, en orden alfabético para que
      * la asignación sea estable entre exportaciones.
      *
-     * @param  \Illuminate\Support\Collection<int, \App\Models\Carrera>  $carreras
+     * @param  Collection<int, Carrera>  $carreras
      * @return array<int, string> clave: carrera_id, valor: color hex sin "#"
      */
     private function asignarColores($carreras): array
@@ -153,7 +155,7 @@ class ConcentradoGeneralExport implements FromView, WithTitle
      * continuos en la misma aula (p. ej. 09:00-10:00 y 10:00-11:00 → 09:00-11:00),
      * en vez de listarlos por separado.
      *
-     * @param  \Illuminate\Support\Collection<int, CargaAcademica>  $cargasDelDia
+     * @param  Collection<int, CargaAcademica>  $cargasDelDia
      */
     private function textoDelDia($cargasDelDia): string
     {

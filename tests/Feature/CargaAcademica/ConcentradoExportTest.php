@@ -67,17 +67,17 @@ it('exporta el concentrado general de todas las carreras como descarga y notific
     $docenteUser = User::factory()->docente()->create(['name' => 'Juan Pérez']);
     $docente = Docente::create(['user_id' => $docenteUser->id]);
 
-    CargaAcademica::create([
+    $carga = CargaAcademica::create([
         'periodo_escolar_id' => $periodo->id,
         'carrera_id' => $carrera->id,
         'docente_id' => $docente->id,
         'asignatura_id' => $asignatura->id,
-        'grupo_id' => $grupo->id,
         'aula_id' => $aula->id,
         'dia_semana' => 1,
         'hora_inicio' => '08:00',
         'hora_fin' => '09:00',
     ]);
+    $carga->grupos()->attach($grupo->id);
 
     $respuesta = $this->actingAs($admin)->get(route('admin.concentrado.general', ['periodo' => $periodo->id]));
 
@@ -107,16 +107,18 @@ it('fusiona en el concentrado dos bloques contiguos de la misma aula en un solo 
     $docenteUser = User::factory()->docente()->create(['name' => 'Juan Pérez']);
     $docente = Docente::create(['user_id' => $docenteUser->id]);
 
-    CargaAcademica::create([
+    $c1 = CargaAcademica::create([
         'periodo_escolar_id' => $periodo->id, 'carrera_id' => $carrera->id, 'docente_id' => $docente->id,
-        'asignatura_id' => $asignatura->id, 'grupo_id' => $grupo->id, 'aula_id' => $aula->id,
+        'asignatura_id' => $asignatura->id, 'aula_id' => $aula->id,
         'dia_semana' => 1, 'hora_inicio' => '09:00', 'hora_fin' => '10:00',
     ]);
-    CargaAcademica::create([
+    $c1->grupos()->attach($grupo->id);
+    $c2 = CargaAcademica::create([
         'periodo_escolar_id' => $periodo->id, 'carrera_id' => $carrera->id, 'docente_id' => $docente->id,
-        'asignatura_id' => $asignatura->id, 'grupo_id' => $grupo->id, 'aula_id' => $aula->id,
+        'asignatura_id' => $asignatura->id, 'aula_id' => $aula->id,
         'dia_semana' => 1, 'hora_inicio' => '10:00', 'hora_fin' => '11:00',
     ]);
+    $c2->grupos()->attach($grupo->id);
 
     $bloques = (new ConcentradoGeneralExport($periodo))->view()->getData()['bloques'];
 
@@ -135,16 +137,18 @@ it('no fusiona en el concentrado bloques del mismo día en aulas distintas', fun
     $docenteUser = User::factory()->docente()->create(['name' => 'Juan Pérez']);
     $docente = Docente::create(['user_id' => $docenteUser->id]);
 
-    CargaAcademica::create([
+    $c1 = CargaAcademica::create([
         'periodo_escolar_id' => $periodo->id, 'carrera_id' => $carrera->id, 'docente_id' => $docente->id,
-        'asignatura_id' => $asignatura->id, 'grupo_id' => $grupo->id, 'aula_id' => $aulaA->id,
+        'asignatura_id' => $asignatura->id, 'aula_id' => $aulaA->id,
         'dia_semana' => 1, 'hora_inicio' => '09:00', 'hora_fin' => '10:00',
     ]);
-    CargaAcademica::create([
+    $c1->grupos()->attach($grupo->id);
+    $c2 = CargaAcademica::create([
         'periodo_escolar_id' => $periodo->id, 'carrera_id' => $carrera->id, 'docente_id' => $docente->id,
-        'asignatura_id' => $asignatura->id, 'grupo_id' => $grupo->id, 'aula_id' => $aulaB->id,
+        'asignatura_id' => $asignatura->id, 'aula_id' => $aulaB->id,
         'dia_semana' => 1, 'hora_inicio' => '10:00', 'hora_fin' => '11:00',
     ]);
+    $c2->grupos()->attach($grupo->id);
 
     $bloques = (new ConcentradoGeneralExport($periodo))->view()->getData()['bloques'];
 

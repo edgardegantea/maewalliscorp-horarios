@@ -33,6 +33,8 @@ export default function Index({ grupos }) {
                                     'semestre (opcional)',
                                     'matricula',
                                     'modalidad (opcional)',
+                                    'hora_inicio (opcional)',
+                                    'hora_fin (opcional)',
                                 ]}
                                 nota="carrera_clave y periodo_nombre deben coincidir exactamente con registros existentes."
                             />
@@ -53,6 +55,7 @@ export default function Index({ grupos }) {
                                 <TH>Semestre</TH>
                                 <TH>Matrícula</TH>
                                 <TH>Modalidad</TH>
+                                <TH>Horario</TH>
                                 <TH align="right">
                                     <span className="sr-only">Acciones</span>
                                 </TH>
@@ -67,6 +70,11 @@ export default function Index({ grupos }) {
                                     <TD>{grupo.semestre ?? '—'}</TD>
                                     <TD>{grupo.matricula}</TD>
                                     <TD>{grupo.modalidad}</TD>
+                                    <TD>
+                                        {grupo.hora_inicio && grupo.hora_fin
+                                            ? `${grupo.hora_inicio.slice(0, 5)} - ${grupo.hora_fin.slice(0, 5)}`
+                                            : '—'}
+                                    </TD>
                                     <TD align="right">
                                         <div className="flex justify-end gap-4">
                                             <Link
@@ -85,7 +93,7 @@ export default function Index({ grupos }) {
                                     </TD>
                                 </TR>
                             ))}
-                            {grupos.length === 0 && <EmptyRow colSpan={7}>No hay grupos registrados.</EmptyRow>}
+                            {grupos.length === 0 && <EmptyRow colSpan={8}>No hay grupos registrados.</EmptyRow>}
                         </TBody>
                     </Table>
                 </Card>

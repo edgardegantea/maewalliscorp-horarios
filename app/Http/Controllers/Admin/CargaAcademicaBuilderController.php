@@ -16,6 +16,7 @@ use App\Models\PeriodoEscolar;
 use App\Support\Horario;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -49,8 +50,8 @@ class CargaAcademicaBuilderController extends Controller
             'periodo' => $periodo,
             'carrera' => $carrera,
             'docentes' => $docentes,
-            'asignaturas' => Asignatura::where('carrera_id', $carrera->id)->orderBy('nombre')->get(['id', 'nombre', 'horas_semana']),
-            'grupos' => Grupo::where('carrera_id', $carrera->id)->where('periodo_escolar_id', $periodo->id)->orderBy('nombre')->get(['id', 'nombre', 'matricula']),
+            'asignaturas' => Asignatura::where('carrera_id', $carrera->id)->orderBy('nombre')->get(['id', 'nombre', 'semestre', 'horas_semana']),
+            'grupos' => Grupo::where('carrera_id', $carrera->id)->where('periodo_escolar_id', $periodo->id)->orderBy('nombre')->get(['id', 'nombre', 'semestre', 'matricula', 'hora_inicio', 'hora_fin']),
             'aulas' => Aula::where('activo', true)->orderBy('nombre')->get(['id', 'nombre', 'capacidad']),
             'slots' => Horario::slots(),
         ]);
@@ -75,7 +76,7 @@ class CargaAcademicaBuilderController extends Controller
             ->get(['dia_semana', 'hora_inicio', 'hora_fin']);
 
         // Todas las cargas del docente en el periodo (cualquier carrera) — bloquean su horario.
-        $cargasDocente = CargaAcademica::with(['asignatura', 'grupo', 'aula'])
+        $cargasDocente = CargaAcademica::with(['asignatura', 'grupos', 'aula'])
             ->where('periodo_escolar_id', $periodoId)
             ->where('docente_id', $docenteId)
             ->get();
@@ -107,8 +108,8 @@ class CargaAcademicaBuilderController extends Controller
                         'carga_id' => $carga->id,
                         'asignatura' => $carga->asignatura->nombre,
                         'asignatura_id' => $carga->asignatura_id,
-                        'grupo' => $carga->grupo->nombre,
-                        'grupo_id' => $carga->grupo_id,
+                        'grupo' => $carga->nombreGrupos(),
+                        'grupo_ids' => $carga->grupos->pluck('id'),
                         'aula' => $carga->aula->nombre,
                         'aula_id' => $carga->aula_id,
                         'hora_inicio' => Horario::hhmm($carga->hora_inicio),
@@ -151,10 +152,13 @@ class CargaAcademicaBuilderController extends Controller
             'hora_inicio' => ['required', 'date_format:H:i'],
             'hora_fin' => ['required', 'date_format:H:i', 'after:hora_inicio'],
             'aula_id' => ['nullable', 'exists:aulas,id'],
-            'grupo_id' => ['nullable', 'exists:grupos,id'],
+            'grupo_ids' => ['nullable', 'array'],
+            'grupo_ids.*' => ['exists:grupos,id'],
             'ignorar_carga_id' => ['nullable', 'exists:cargas_academicas,id'],
             'asignatura_id' => ['nullable', 'exists:asignaturas,id'],
         ]);
+
+        $grupoIds = array_map('intval', $datos['grupo_ids'] ?? []);
 
         $resultado = $accion->ejecutar(
             (int) $datos['periodo_escolar_id'],
@@ -163,26 +167,26 @@ class CargaAcademicaBuilderController extends Controller
             $datos['hora_inicio'],
             $datos['hora_fin'],
             isset($datos['aula_id']) ? (int) $datos['aula_id'] : null,
-            isset($datos['grupo_id']) ? (int) $datos['grupo_id'] : null,
+            $grupoIds,
             isset($datos['ignorar_carga_id']) ? (int) $datos['ignorar_carga_id'] : null,
             isset($datos['asignatura_id']) ? (int) $datos['asignatura_id'] : null,
         );
 
         return response()->json([
             'resultado' => $resultado->toArray(),
-            'aulas_ocupadas' => $this->recursosOcupados('aula_id', $datos),
-            'grupos_ocupados' => $this->recursosOcupados('grupo_id', $datos),
+            'aulas_ocupadas' => $this->aulasOcupadas($datos),
+            'grupos_ocupados' => $this->gruposOcupados($datos),
         ]);
     }
 
     /**
-     * IDs de aulas o grupos ocupados en el periodo+día+rango dado (para marcar
-     * los "espacios no disponibles" en el modal).
+     * IDs de aulas ocupadas en el periodo+día+rango dado (para marcar los
+     * "espacios no disponibles" en el modal).
      *
      * @param  array<string, mixed>  $datos
      * @return array<int, int>
      */
-    private function recursosOcupados(string $columna, array $datos): array
+    private function aulasOcupadas(array $datos): array
     {
         return CargaAcademica::query()
             ->where('periodo_escolar_id', $datos['periodo_escolar_id'])
@@ -191,7 +195,28 @@ class CargaAcademicaBuilderController extends Controller
             ->where('hora_fin', '>', $datos['hora_inicio'])
             ->when(isset($datos['ignorar_carga_id']), fn ($q) => $q->whereKeyNot($datos['ignorar_carga_id']))
             ->distinct()
-            ->pluck($columna)
+            ->pluck('aula_id')
+            ->all();
+    }
+
+    /**
+     * IDs de grupos ocupados en el periodo+día+rango dado, vía el pivot
+     * carga_academica_grupo (una carga puede tener varios grupos).
+     *
+     * @param  array<string, mixed>  $datos
+     * @return array<int, int>
+     */
+    private function gruposOcupados(array $datos): array
+    {
+        return DB::table('carga_academica_grupo')
+            ->join('cargas_academicas', 'cargas_academicas.id', '=', 'carga_academica_grupo.carga_academica_id')
+            ->where('cargas_academicas.periodo_escolar_id', $datos['periodo_escolar_id'])
+            ->where('cargas_academicas.dia_semana', $datos['dia_semana'])
+            ->where('cargas_academicas.hora_inicio', '<', $datos['hora_fin'])
+            ->where('cargas_academicas.hora_fin', '>', $datos['hora_inicio'])
+            ->when(isset($datos['ignorar_carga_id']), fn ($q) => $q->where('cargas_academicas.id', '!=', $datos['ignorar_carga_id']))
+            ->distinct()
+            ->pluck('carga_academica_grupo.grupo_id')
             ->all();
     }
 }

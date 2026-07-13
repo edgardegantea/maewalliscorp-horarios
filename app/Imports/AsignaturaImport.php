@@ -13,7 +13,7 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
 
 /**
- * Columnas esperadas: carrera_clave, nombre, clave, horas_semana (opcional).
+ * Columnas esperadas: carrera_clave, nombre, clave, semestre (opcional), horas_semana (opcional).
  */
 class AsignaturaImport implements SkipsOnError, SkipsOnFailure, ToModel, WithHeadingRow, WithValidation
 {
@@ -31,6 +31,7 @@ class AsignaturaImport implements SkipsOnError, SkipsOnFailure, ToModel, WithHea
             'carrera_id' => $carrera->id,
             'nombre' => $row['nombre'],
             'clave' => mb_strtoupper((string) $row['clave']),
+            'semestre' => $row['semestre'] ?? null ?: null,
             'horas_semana' => $row['horas_semana'] ?: null,
         ]);
     }
@@ -47,6 +48,7 @@ class AsignaturaImport implements SkipsOnError, SkipsOnFailure, ToModel, WithHea
             ],
             'nombre' => ['required', 'string', 'max:255'],
             'clave' => ['required', 'max:50'],
+            'semestre' => ['nullable', 'integer', 'min:1', 'max:20'],
             'horas_semana' => ['nullable', 'integer', 'min:1', 'max:40'],
         ];
     }

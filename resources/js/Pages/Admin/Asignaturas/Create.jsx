@@ -9,6 +9,7 @@ export default function Create({ carreras }) {
         carrera_id: '',
         nombre: '',
         clave: '',
+        semestre: '',
         horas_semana: '',
     });
 

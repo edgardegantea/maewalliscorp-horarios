@@ -15,16 +15,18 @@ export default function SlotModal({
     asignaturas,
     grupos,
     aulas,
+    onDuplicar,
 }) {
     const cargaExistente = seleccion?.cargaExistente ?? null;
     const editando = Boolean(cargaExistente);
+    const prellenado = seleccion?.prellenado ?? null;
 
     const { data, setData, post, put, processing, errors, reset } = useForm({
         periodo_escolar_id: contexto.periodo.id,
         carrera_id: contexto.carrera.id,
         docente_id: contexto.docenteId,
         asignatura_id: '',
-        grupo_id: '',
+        grupo_ids: [],
         aula_id: '',
         dia_semana: seleccion?.dia_semana ?? '',
         hora_inicio: seleccion?.hora_inicio ?? '',
@@ -39,15 +41,15 @@ export default function SlotModal({
     // (o precarga los valores de la carga existente si se abrió en modo edición).
     useEffect(() => {
         if (seleccion) {
-            reset('asignatura_id', 'grupo_id', 'aula_id');
+            reset('asignatura_id', 'grupo_ids', 'aula_id');
             setData((prev) => ({
                 ...prev,
                 dia_semana: seleccion.dia_semana,
                 hora_inicio: seleccion.hora_inicio,
                 hora_fin: seleccion.hora_fin,
-                asignatura_id: cargaExistente?.asignatura_id ?? '',
-                grupo_id: cargaExistente?.grupo_id ?? '',
-                aula_id: cargaExistente?.aula_id ?? '',
+                asignatura_id: cargaExistente?.asignatura_id ?? prellenado?.asignatura_id ?? '',
+                grupo_ids: cargaExistente?.grupo_ids ?? prellenado?.grupo_ids ?? [],
+                aula_id: cargaExistente?.aula_id ?? prellenado?.aula_id ?? '',
             }));
             setOcupados({ aulas: [], grupos: [] });
             setVerificacion(null);
@@ -55,7 +57,7 @@ export default function SlotModal({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [seleccion]);
 
-    // Dry-run de verificación cada vez que cambian aula/grupo/asignatura (con debounce).
+    // Dry-run de verificación cada vez que cambian aula/grupos/asignatura (con debounce).
     useEffect(() => {
         if (!show || !seleccion) {
             return;
@@ -71,7 +73,7 @@ export default function SlotModal({
                     hora_inicio: data.hora_inicio,
                     hora_fin: data.hora_fin,
                     aula_id: data.aula_id || null,
-                    grupo_id: data.grupo_id || null,
+                    grupo_ids: data.grupo_ids,
                     asignatura_id: data.asignatura_id || null,
                     ignorar_carga_id: cargaExistente?.id ?? null,
                 })
@@ -86,7 +88,7 @@ export default function SlotModal({
 
         return () => clearTimeout(debounce.current);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [show, data.aula_id, data.grupo_id, data.asignatura_id, data.hora_inicio, data.hora_fin, data.dia_semana]);
+    }, [show, data.aula_id, data.grupo_ids, data.asignatura_id, data.hora_inicio, data.hora_fin, data.dia_semana]);
 
     const guardar = (e) => {
         e.preventDefault();
@@ -112,18 +114,43 @@ export default function SlotModal({
         }
     };
 
-    const grupoSeleccionado = useMemo(
-        () => grupos.find((g) => String(g.id) === String(data.grupo_id)),
-        [grupos, data.grupo_id],
+    const duplicar = () => {
+        onDuplicar?.({
+            asignatura_id: data.asignatura_id,
+            grupo_ids: data.grupo_ids,
+            aula_id: data.aula_id,
+        });
+    };
+
+    const alternarGrupo = (grupoId, marcado) => {
+        setData(
+            'grupo_ids',
+            marcado ? [...data.grupo_ids, grupoId] : data.grupo_ids.filter((id) => id !== grupoId),
+        );
+    };
+
+    const gruposSeleccionados = useMemo(
+        () => grupos.filter((g) => data.grupo_ids.includes(g.id)),
+        [grupos, data.grupo_ids],
     );
+    const matriculaTotal = gruposSeleccionados.reduce((sum, g) => sum + (g.matricula ?? 0), 0);
     const aulaSeleccionada = useMemo(
         () => aulas.find((a) => String(a.id) === String(data.aula_id)),
         [aulas, data.aula_id],
     );
     const excedeCapacidad =
-        grupoSeleccionado?.matricula && aulaSeleccionada?.capacidad
-            ? grupoSeleccionado.matricula > aulaSeleccionada.capacidad
-            : false;
+        matriculaTotal > 0 && aulaSeleccionada?.capacidad ? matriculaTotal > aulaSeleccionada.capacidad : false;
+
+    const asignaturaSeleccionada = useMemo(
+        () => asignaturas.find((a) => String(a.id) === String(data.asignatura_id)),
+        [asignaturas, data.asignatura_id],
+    );
+    const gruposDeOtroSemestre = useMemo(() => {
+        if (!asignaturaSeleccionada?.semestre) {
+            return [];
+        }
+        return gruposSeleccionados.filter((g) => g.semestre && g.semestre !== asignaturaSeleccionada.semestre);
+    }, [asignaturaSeleccionada, gruposSeleccionados]);
 
     if (!seleccion) {
         return null;
@@ -141,6 +168,12 @@ export default function SlotModal({
                     {DIAS[seleccion.dia_semana]} · {seleccion.hora_inicio} a {seleccion.hora_fin}
                 </p>
 
+                {prellenado && (
+                    <div className="mt-3 rounded-md bg-indigo-50 p-3 text-sm text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400">
+                        Duplicando asignatura, grupo(s) y aula de otra clase. Ajusta lo que necesites y guarda.
+                    </div>
+                )}
+
                 {mensajesVerificacion.length > 0 && (
                     <div className="mt-3 rounded-md bg-red-50 p-3 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-400">
                         <ul className="list-disc space-y-1 pl-4">
@@ -153,8 +186,16 @@ export default function SlotModal({
 
                 {excedeCapacidad && (
                     <div className="mt-3 rounded-md bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-500/10 dark:text-amber-400">
-                        El grupo tiene {grupoSeleccionado.matricula} alumnos, pero el aula solo tiene capacidad
+                        Los grupos seleccionados suman {matriculaTotal} alumnos, pero el aula solo tiene capacidad
                         para {aulaSeleccionada.capacidad}. Puedes continuar, pero verifica que sea correcto.
+                    </div>
+                )}
+
+                {gruposDeOtroSemestre.length > 0 && (
+                    <div className="mt-3 rounded-md bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-500/10 dark:text-amber-400">
+                        "{asignaturaSeleccionada.nombre}" es de semestre {asignaturaSeleccionada.semestre}, pero{' '}
+                        {gruposDeOtroSemestre.map((g) => g.nombre).join(', ')} {gruposDeOtroSemestre.length === 1 ? 'es' : 'son'} de otro
+                        semestre. Puedes continuar, pero verifica que sea correcto.
                     </div>
                 )}
 
@@ -170,6 +211,7 @@ export default function SlotModal({
                             {asignaturas.map((a) => (
                                 <option key={a.id} value={a.id}>
                                     {a.nombre}
+                                    {a.semestre ? ` · sem. ${a.semestre}` : ''}
                                     {a.horas_semana ? ` (${a.horas_semana}h/semana)` : ''}
                                 </option>
                             ))}
@@ -178,23 +220,42 @@ export default function SlotModal({
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Grupo</label>
-                        <SelectInput
-                            className="mt-1 block w-full"
-                            value={data.grupo_id}
-                            onChange={(e) => setData('grupo_id', e.target.value)}
-                        >
-                            <option value="">Selecciona un grupo</option>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                            Grupo(s)
+                        </label>
+                        <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">
+                            Selecciona uno o varios grupos si la clase se imparte a una combinación de grupos.
+                        </p>
+                        <div className="mt-1 max-h-40 space-y-1 overflow-y-auto rounded-md border border-slate-300 p-2 dark:border-slate-700">
                             {grupos.map((g) => {
-                                const ocupado = ocupados.grupos.includes(g.id);
+                                const ocupado = ocupados.grupos.includes(g.id) && !data.grupo_ids.includes(g.id);
+                                const marcado = data.grupo_ids.includes(g.id);
                                 return (
-                                    <option key={g.id} value={g.id} disabled={ocupado}>
-                                        {g.nombre} ({g.matricula} alumnos){ocupado ? ' — ocupado' : ''}
-                                    </option>
+                                    <label
+                                        key={g.id}
+                                        className={`flex items-center gap-2 rounded px-1.5 py-1 text-sm ${
+                                            ocupado
+                                                ? 'cursor-not-allowed text-slate-400 dark:text-slate-600'
+                                                : 'cursor-pointer text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800'
+                                        }`}
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 dark:border-slate-600"
+                                            checked={marcado}
+                                            disabled={ocupado}
+                                            onChange={(e) => alternarGrupo(g.id, e.target.checked)}
+                                        />
+                                        {g.nombre} ({g.matricula} alumnos)
+                                        {g.hora_inicio && g.hora_fin
+                                            ? ` · ${g.hora_inicio.slice(0, 5)}-${g.hora_fin.slice(0, 5)}`
+                                            : ''}
+                                        {ocupado ? ' — ocupado' : ''}
+                                    </label>
                                 );
                             })}
-                        </SelectInput>
-                        {errors.grupo_id && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.grupo_id}</p>}
+                        </div>
+                        {errors.grupo_ids && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.grupo_ids}</p>}
                     </div>
 
                     <div>
@@ -228,13 +289,22 @@ export default function SlotModal({
 
                 <div className="mt-6 flex items-center justify-between gap-3">
                     {editando ? (
-                        <button
-                            type="button"
-                            onClick={eliminar}
-                            className="text-sm font-medium text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
-                        >
-                            Eliminar
-                        </button>
+                        <div className="flex gap-4">
+                            <button
+                                type="button"
+                                onClick={eliminar}
+                                className="text-sm font-medium text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                            >
+                                Eliminar
+                            </button>
+                            <button
+                                type="button"
+                                onClick={duplicar}
+                                className="text-sm font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
+                            >
+                                Duplicar…
+                            </button>
+                        </div>
                     ) : (
                         <span />
                     )}
@@ -246,7 +316,7 @@ export default function SlotModal({
                             disabled={
                                 processing ||
                                 !data.asignatura_id ||
-                                !data.grupo_id ||
+                                data.grupo_ids.length === 0 ||
                                 !data.aula_id ||
                                 (verificacion && !verificacion.valido)
                             }

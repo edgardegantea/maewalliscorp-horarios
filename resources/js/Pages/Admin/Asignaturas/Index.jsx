@@ -26,7 +26,7 @@ export default function Index({ asignaturas }) {
                         <>
                             <ImportCsvButton
                                 action={route('admin.asignaturas.import')}
-                                columnas={['carrera_clave', 'nombre', 'clave', 'horas_semana (opcional)']}
+                                columnas={['carrera_clave', 'nombre', 'clave', 'semestre (opcional)', 'horas_semana (opcional)']}
                                 nota="carrera_clave debe coincidir con la clave de una carrera existente."
                             />
                             <Link href={route('admin.asignaturas.create')}>
@@ -43,6 +43,7 @@ export default function Index({ asignaturas }) {
                                 <TH>Nombre</TH>
                                 <TH>Carrera</TH>
                                 <TH>Clave</TH>
+                                <TH>Semestre</TH>
                                 <TH>Horas/semana</TH>
                                 <TH align="right">
                                     <span className="sr-only">Acciones</span>
@@ -55,6 +56,7 @@ export default function Index({ asignaturas }) {
                                     <TD className="font-medium text-slate-900">{asignatura.nombre}</TD>
                                     <TD>{asignatura.carrera.nombre}</TD>
                                     <TD>{asignatura.clave}</TD>
+                                    <TD>{asignatura.semestre ?? '—'}</TD>
                                     <TD>{asignatura.horas_semana ?? '—'}</TD>
                                     <TD align="right">
                                         <div className="flex justify-end gap-4">
@@ -75,7 +77,7 @@ export default function Index({ asignaturas }) {
                                 </TR>
                             ))}
                             {asignaturas.length === 0 && (
-                                <EmptyRow colSpan={5}>No hay asignaturas registradas.</EmptyRow>
+                                <EmptyRow colSpan={6}>No hay asignaturas registradas.</EmptyRow>
                             )}
                         </TBody>
                     </Table>

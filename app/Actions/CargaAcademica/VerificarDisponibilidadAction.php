@@ -5,17 +5,23 @@ namespace App\Actions\CargaAcademica;
 use App\Models\Asignatura;
 use App\Models\CargaAcademica;
 use App\Models\DisponibilidadDocente;
+use App\Models\Grupo;
+use Illuminate\Support\Facades\DB;
 
 class VerificarDisponibilidadAction
 {
     /**
      * Verifica, sin escribir, si una carga académica propuesta es válida:
-     *  - No se traslapa con otra carga del mismo docente, aula o grupo (en todo el
-     *    sistema, dentro del mismo periodo escolar y día — un aula/docente/grupo puede
-     *    chocar entre carreras distintas).
+     *  - No se traslapa con otra carga del mismo docente, aula o alguno de los
+     *    grupos (en todo el sistema, dentro del mismo periodo escolar y día —
+     *    un aula/docente/grupo puede chocar entre carreras distintas). Una
+     *    carga puede impartirse a una combinación de varios grupos a la vez.
      *  - Cae completa dentro de un bloque de disponibilidad del docente ese día
      *    (regla de las 8 horas: la disponibilidad ya está acotada a un rango <= 8h).
-     *  - No excede las horas semanales declaradas de la asignatura para ese grupo.
+     *  - No excede las horas semanales declaradas de la asignatura para ninguno
+     *    de los grupos.
+     *
+     * @param  array<int, int>  $grupoIds
      */
     public function ejecutar(
         int $periodoEscolarId,
@@ -24,7 +30,7 @@ class VerificarDisponibilidadAction
         string $horaInicio,
         string $horaFin,
         ?int $aulaId = null,
-        ?int $grupoId = null,
+        array $grupoIds = [],
         ?int $ignorarCargaId = null,
         ?int $asignaturaId = null,
     ): ResultadoVerificacion {
@@ -42,23 +48,77 @@ class VerificarDisponibilidadAction
             }
         }
 
-        if ($grupoId !== null) {
-            $conflictoGrupo = $this->buscarConflicto('grupo_id', $grupoId, $periodoEscolarId, $diaSemana, $horaInicio, $horaFin, $ignorarCargaId);
-            if ($conflictoGrupo) {
-                $conflictos[] = ['tipo' => 'grupo', 'mensaje' => 'El grupo ya tiene clase en ese horario.'];
+        foreach ($grupoIds as $grupoId) {
+            if ($this->buscarConflictoGrupo($grupoId, $periodoEscolarId, $diaSemana, $horaInicio, $horaFin, $ignorarCargaId)) {
+                $conflictos[] = ['tipo' => 'grupo', 'mensaje' => 'Uno de los grupos seleccionados ya tiene clase en ese horario.'];
+                break;
             }
         }
 
-        if ($asignaturaId !== null && $grupoId !== null) {
-            $mensajeHoras = $this->excedeHorasSemana($asignaturaId, $grupoId, $periodoEscolarId, $horaInicio, $horaFin, $ignorarCargaId);
-            if ($mensajeHoras !== null) {
-                $conflictos[] = ['tipo' => 'horas_semana', 'mensaje' => $mensajeHoras];
+        foreach ($grupoIds as $grupoId) {
+            $mensajeHorarioGrupo = $this->fueraDeHorarioDelGrupo($grupoId, $horaInicio, $horaFin);
+            if ($mensajeHorarioGrupo !== null) {
+                $conflictos[] = ['tipo' => 'horario_grupo', 'mensaje' => $mensajeHorarioGrupo];
+            }
+        }
+
+        if ($asignaturaId !== null) {
+            foreach ($grupoIds as $grupoId) {
+                $mensajeHoras = $this->excedeHorasSemana($asignaturaId, $grupoId, $periodoEscolarId, $horaInicio, $horaFin, $ignorarCargaId);
+                if ($mensajeHoras !== null) {
+                    $conflictos[] = ['tipo' => 'horas_semana', 'mensaje' => $mensajeHoras];
+                }
             }
         }
 
         [$dentro, $mensajeDisp] = $this->cabeEnDisponibilidad($docenteId, $periodoEscolarId, $diaSemana, $horaInicio, $horaFin);
 
         return new ResultadoVerificacion($conflictos, $dentro, $mensajeDisp);
+    }
+
+    private function buscarConflictoGrupo(
+        int $grupoId,
+        int $periodoEscolarId,
+        int $diaSemana,
+        string $horaInicio,
+        string $horaFin,
+        ?int $ignorarCargaId,
+    ): bool {
+        return DB::table('carga_academica_grupo')
+            ->join('cargas_academicas', 'cargas_academicas.id', '=', 'carga_academica_grupo.carga_academica_id')
+            ->where('carga_academica_grupo.grupo_id', $grupoId)
+            ->where('cargas_academicas.periodo_escolar_id', $periodoEscolarId)
+            ->where('cargas_academicas.dia_semana', $diaSemana)
+            ->when($ignorarCargaId, fn ($q) => $q->where('cargas_academicas.id', '!=', $ignorarCargaId))
+            ->where('cargas_academicas.hora_inicio', '<', $horaFin)
+            ->where('cargas_academicas.hora_fin', '>', $horaInicio)
+            ->exists();
+    }
+
+    /**
+     * Si el grupo tiene un horario propio (hora_inicio/hora_fin) definido,
+     * la carga debe caer completa dentro de ese rango.
+     */
+    private function fueraDeHorarioDelGrupo(int $grupoId, string $horaInicio, string $horaFin): ?string
+    {
+        $grupo = Grupo::find($grupoId);
+
+        if (! $grupo || ! $grupo->hora_inicio || ! $grupo->hora_fin) {
+            return null;
+        }
+
+        $inicio = $this->aMinutos($horaInicio);
+        $fin = $this->aMinutos($horaFin);
+        $inicioGrupo = $this->aMinutos($grupo->hora_inicio);
+        $finGrupo = $this->aMinutos($grupo->hora_fin);
+
+        if ($inicio >= $inicioGrupo && $fin <= $finGrupo) {
+            return null;
+        }
+
+        $horarioTexto = substr($grupo->hora_inicio, 0, 5).' - '.substr($grupo->hora_fin, 0, 5);
+
+        return "El horario del grupo \"{$grupo->nombre}\" es {$horarioTexto}; el bloque seleccionado queda fuera de ese rango.";
     }
 
     /**
@@ -80,13 +140,15 @@ class VerificarDisponibilidadAction
             return null;
         }
 
-        $minutosExistentes = CargaAcademica::query()
-            ->where('periodo_escolar_id', $periodoEscolarId)
-            ->where('asignatura_id', $asignaturaId)
-            ->where('grupo_id', $grupoId)
-            ->when($ignorarCargaId, fn ($q) => $q->whereKeyNot($ignorarCargaId))
-            ->get(['hora_inicio', 'hora_fin'])
-            ->sum(fn (CargaAcademica $c) => $this->aMinutos($c->hora_fin) - $this->aMinutos($c->hora_inicio));
+        $bloques = DB::table('carga_academica_grupo')
+            ->join('cargas_academicas', 'cargas_academicas.id', '=', 'carga_academica_grupo.carga_academica_id')
+            ->where('carga_academica_grupo.grupo_id', $grupoId)
+            ->where('cargas_academicas.periodo_escolar_id', $periodoEscolarId)
+            ->where('cargas_academicas.asignatura_id', $asignaturaId)
+            ->when($ignorarCargaId, fn ($q) => $q->where('cargas_academicas.id', '!=', $ignorarCargaId))
+            ->get(['cargas_academicas.hora_inicio', 'cargas_academicas.hora_fin']);
+
+        $minutosExistentes = $bloques->sum(fn ($c) => $this->aMinutos($c->hora_fin) - $this->aMinutos($c->hora_inicio));
 
         $minutosNuevos = $this->aMinutos($horaFin) - $this->aMinutos($horaInicio);
         $totalMinutos = $minutosExistentes + $minutosNuevos;
@@ -95,7 +157,7 @@ class VerificarDisponibilidadAction
         if ($totalMinutos > $limiteMinutos) {
             $totalHoras = rtrim(rtrim(number_format($totalMinutos / 60, 2), '0'), '.');
 
-            return "\"{$asignatura->nombre}\" ya tendría {$totalHoras}h asignadas a este grupo esta semana (límite: {$asignatura->horas_semana}h).";
+            return "\"{$asignatura->nombre}\" ya tendría {$totalHoras}h asignadas a uno de los grupos esta semana (límite: {$asignatura->horas_semana}h).";
         }
 
         return null;

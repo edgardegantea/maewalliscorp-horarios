@@ -9,11 +9,13 @@ use App\Http\Controllers\Admin\CarreraController;
 use App\Http\Controllers\Admin\ConcentradoExportController;
 use App\Http\Controllers\Admin\CoordinadorCarreraController;
 use App\Http\Controllers\Admin\CoordinadorController;
+use App\Http\Controllers\Admin\DiaNoLaborableController;
 use App\Http\Controllers\Admin\DisponibilidadDocenteController;
 use App\Http\Controllers\Admin\DocenteCarreraController;
 use App\Http\Controllers\Admin\DocenteController;
 use App\Http\Controllers\Admin\GrupoController;
 use App\Http\Controllers\Admin\PeriodoEscolarController;
+use App\Http\Controllers\Admin\ReporteController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('admin')->name('admin.')->group(function () {
@@ -42,6 +44,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('concentrado/general', [ConcentradoExportController::class, 'general'])->name('concentrado.general');
 
         Route::get('auditoria', [AuditoriaController::class, 'index'])->name('auditoria.index');
+
+        Route::get('reportes/utilizacion-aulas', [ReporteController::class, 'utilizacionAulas'])->name('reportes.utilizacion-aulas');
+
+        Route::resource('dias-no-laborables', DiaNoLaborableController::class)
+            ->only(['index', 'store', 'destroy'])
+            ->parameters(['dias-no-laborables' => 'diaNoLaborable']);
     });
 
     // Recursos de carrera: administrador general o coordinador de la(s) carrera(s)
@@ -62,5 +70,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('cargas-academicas/verificar', [CargaAcademicaBuilderController::class, 'verificar'])->name('cargas.verificar');
 
         Route::get('concentrado/export', ConcentradoExportController::class)->name('concentrado.export');
+
+        Route::get('reportes/carga-docente', [ReporteController::class, 'cargaDocente'])->name('reportes.carga-docente');
     });
 });

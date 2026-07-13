@@ -4,11 +4,11 @@ namespace App\Exports\Sheets;
 
 use App\Models\CargaAcademica;
 use App\Support\Horario;
+use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Concerns\FromView;
 use Maatwebsite\Excel\Concerns\WithTitle;
-use Illuminate\Contracts\View\View;
 
 class DocenteHorarioSheet implements FromView, WithTitle
 {
@@ -56,7 +56,7 @@ class DocenteHorarioSheet implements FromView, WithTitle
 
         return [
             'linea1' => $carga->asignatura->nombre,
-            'linea2' => "{$carga->grupo->nombre} · {$carga->aula->nombre}",
+            'linea2' => "{$carga->nombreGrupos()} · {$carga->aula->nombre}",
         ];
     }
 }

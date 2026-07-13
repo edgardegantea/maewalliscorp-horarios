@@ -11,6 +11,12 @@ import { useState } from 'react';
 
 const DIAS = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
+const ESTADO_BADGE = {
+    pendiente: { color: 'slate', label: 'Pendiente' },
+    confirmada: { color: 'green', label: 'Confirmada' },
+    conflicto: { color: 'red', label: 'Con problema' },
+};
+
 function GrupoSection({ item }) {
     const { grupo, cargas } = item;
 
@@ -43,7 +49,9 @@ function GrupoSection({ item }) {
                             <TH>Horario</TH>
                             <TH>Docente</TH>
                             <TH>Asignatura</TH>
+                            <TH>Grupos</TH>
                             <TH>Aula</TH>
+                            <TH>Estado</TH>
                             <TH align="right">
                                 <span className="sr-only">Acciones</span>
                             </TH>
@@ -58,7 +66,14 @@ function GrupoSection({ item }) {
                                 </TD>
                                 <TD>{carga.docente.user.name}</TD>
                                 <TD>{carga.asignatura.nombre}</TD>
+                                <TD>{carga.grupos.map((g) => g.nombre).join(' / ')}</TD>
                                 <TD>{carga.aula.nombre}</TD>
+                                <TD>
+                                    <Badge color={ESTADO_BADGE[carga.estado].color}>{ESTADO_BADGE[carga.estado].label}</Badge>
+                                    {carga.estado === 'conflicto' && carga.comentario_docente && (
+                                        <p className="mt-1 max-w-xs text-xs text-red-600 dark:text-red-400">{carga.comentario_docente}</p>
+                                    )}
+                                </TD>
                                 <TD align="right">
                                     <button
                                         onClick={() => eliminar(carga)}

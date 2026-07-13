@@ -23,7 +23,7 @@ class MiHorarioController extends Controller
             : (PeriodoEscolar::where('activo', true)->first() ?? PeriodoEscolar::orderByDesc('fecha_inicio')->first());
 
         $cargas = $periodo
-            ? CargaAcademica::with(['asignatura', 'grupo', 'aula', 'carrera'])
+            ? CargaAcademica::with(['asignatura', 'grupos', 'aula', 'carrera'])
                 ->where('periodo_escolar_id', $periodo->id)
                 ->where('docente_id', $docente->id)
                 ->get()
@@ -34,13 +34,16 @@ class MiHorarioController extends Controller
             'periodos' => PeriodoEscolar::orderByDesc('fecha_inicio')->get(),
             'slots' => Horario::slots(),
             'cargas' => $cargas->map(fn (CargaAcademica $c) => [
+                'id' => $c->id,
                 'dia_semana' => $c->dia_semana,
                 'hora_inicio' => Horario::hhmm($c->hora_inicio),
                 'hora_fin' => Horario::hhmm($c->hora_fin),
                 'asignatura' => $c->asignatura->nombre,
-                'grupo' => $c->grupo->nombre,
+                'grupo' => $c->nombreGrupos(),
                 'aula' => $c->aula->nombre,
                 'carrera' => $c->carrera->nombre,
+                'estado' => $c->estado->value,
+                'comentario_docente' => $c->comentario_docente,
             ])->values(),
         ]);
     }

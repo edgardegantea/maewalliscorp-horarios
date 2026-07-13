@@ -14,3 +14,6 @@ Artisan::command('inspire', function () {
 if (config('app.backups_db_enabled')) {
     Schedule::command('app:backup-database')->dailyAt('02:00');
 }
+
+// Recordatorio semanal a docentes sin disponibilidad registrada.
+Schedule::command('app:recordar-disponibilidad-pendiente')->weeklyOn(1, '08:00');

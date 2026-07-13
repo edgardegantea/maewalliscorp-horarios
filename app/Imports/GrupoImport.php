@@ -15,7 +15,8 @@ use Maatwebsite\Excel\Concerns\WithValidation;
 
 /**
  * Columnas esperadas: carrera_clave, periodo_nombre, nombre, semestre (opcional),
- * matricula, modalidad (opcional, por defecto "Escolarizado").
+ * matricula, modalidad (opcional, por defecto "Escolarizado"), hora_inicio y
+ * hora_fin (opcionales, formato HH:MM).
  */
 class GrupoImport implements SkipsOnError, SkipsOnFailure, ToModel, WithHeadingRow, WithValidation
 {
@@ -37,6 +38,8 @@ class GrupoImport implements SkipsOnError, SkipsOnFailure, ToModel, WithHeadingR
             'semestre' => $row['semestre'] ?: null,
             'matricula' => $row['matricula'],
             'modalidad' => $row['modalidad'] ?: 'Escolarizado',
+            'hora_inicio' => $row['hora_inicio'] ?? null ?: null,
+            'hora_fin' => $row['hora_fin'] ?? null ?: null,
         ]);
     }
 
@@ -54,6 +57,8 @@ class GrupoImport implements SkipsOnError, SkipsOnFailure, ToModel, WithHeadingR
             'nombre' => ['required', 'max:100'],
             'semestre' => ['nullable', 'integer', 'min:1', 'max:20'],
             'matricula' => ['required', 'integer', 'min:1', 'max:200'],
+            'hora_inicio' => ['nullable', 'date_format:H:i'],
+            'hora_fin' => ['nullable', 'date_format:H:i', 'after:hora_inicio'],
         ];
     }
 

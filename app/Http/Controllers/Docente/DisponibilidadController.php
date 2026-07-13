@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Docente;
 use App\Actions\Disponibilidad\GuardarDisponibilidadAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\DisponibilidadRequest;
+use App\Models\DiaNoLaborable;
 use App\Models\DisponibilidadDocente;
 use App\Models\PeriodoEscolar;
 use Illuminate\Http\RedirectResponse;
@@ -31,6 +32,11 @@ class DisponibilidadController extends Controller
                     ->orderBy('dia_semana')
                     ->orderBy('hora_inicio')
                     ->get(['dia_semana', 'hora_inicio', 'hora_fin'])
+                : [],
+            'diasNoLaborables' => $periodo
+                ? DiaNoLaborable::whereBetween('fecha', [$periodo->fecha_inicio, $periodo->fecha_fin])
+                    ->orderBy('fecha')
+                    ->get(['fecha', 'descripcion'])
                 : [],
         ]);
     }

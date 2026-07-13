@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Models\DocenteCarrera;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -23,8 +24,8 @@ class StoreCargaAcademicaRequest extends FormRequest
                 'required',
                 Rule::exists('asignaturas', 'id')->where('carrera_id', $this->input('carrera_id')),
             ],
-            'grupo_id' => [
-                'required',
+            'grupo_ids' => ['required', 'array', 'min:1'],
+            'grupo_ids.*' => [
                 Rule::exists('grupos', 'id')
                     ->where('carrera_id', $this->input('carrera_id'))
                     ->where('periodo_escolar_id', $this->input('periodo_escolar_id')),
@@ -39,7 +40,7 @@ class StoreCargaAcademicaRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator) {
-            $existeAsignacion = \App\Models\DocenteCarrera::where('docente_id', $this->input('docente_id'))
+            $existeAsignacion = DocenteCarrera::where('docente_id', $this->input('docente_id'))
                 ->where('carrera_id', $this->input('carrera_id'))
                 ->where('periodo_escolar_id', $this->input('periodo_escolar_id'))
                 ->exists();
@@ -54,7 +55,8 @@ class StoreCargaAcademicaRequest extends FormRequest
     {
         return [
             'asignatura_id.exists' => 'La asignatura no pertenece a la carrera seleccionada.',
-            'grupo_id.exists' => 'El grupo no pertenece a la carrera y periodo seleccionados.',
+            'grupo_ids.required' => 'Selecciona al menos un grupo.',
+            'grupo_ids.*.exists' => 'Uno de los grupos no pertenece a la carrera y periodo seleccionados.',
         ];
     }
 }

@@ -2,27 +2,31 @@
 
 namespace App\Models;
 
+use App\Enums\EstadoCarga;
+use Database\Factories\CargaAcademicaFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 #[Fillable([
     'periodo_escolar_id',
     'carrera_id',
     'docente_id',
     'asignatura_id',
-    'grupo_id',
     'aula_id',
     'dia_semana',
     'hora_inicio',
     'hora_fin',
+    'estado',
+    'comentario_docente',
     'created_by',
     'updated_by',
 ])]
 class CargaAcademica extends Model
 {
-    /** @use HasFactory<\Database\Factories\CargaAcademicaFactory> */
+    /** @use HasFactory<CargaAcademicaFactory> */
     use HasFactory;
 
     protected $table = 'cargas_academicas';
@@ -31,6 +35,7 @@ class CargaAcademica extends Model
     {
         return [
             'dia_semana' => 'integer',
+            'estado' => EstadoCarga::class,
         ];
     }
 
@@ -54,9 +59,18 @@ class CargaAcademica extends Model
         return $this->belongsTo(Asignatura::class);
     }
 
-    public function grupo(): BelongsTo
+    public function grupos(): BelongsToMany
     {
-        return $this->belongsTo(Grupo::class);
+        return $this->belongsToMany(Grupo::class, 'carga_academica_grupo');
+    }
+
+    /**
+     * Nombres de los grupos de esta carga, unidos con "/" (p. ej. "1A / 1B"
+     * cuando la clase se imparte a una combinación de grupos).
+     */
+    public function nombreGrupos(): string
+    {
+        return $this->grupos->pluck('nombre')->implode(' / ');
     }
 
     public function aula(): BelongsTo

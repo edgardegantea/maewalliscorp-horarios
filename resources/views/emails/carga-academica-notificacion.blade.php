@@ -14,7 +14,7 @@ Se eliminó la siguiente clase de tu horario:
 @endif
 
 - **Asignatura:** {{ $carga->asignatura->nombre }}
-- **Grupo:** {{ $carga->grupo->nombre }}
+- **Grupo(s):** {{ $carga->nombreGrupos() }}
 - **Aula:** {{ $carga->aula->nombre }}
 - **Día:** {{ $dia }}
 - **Horario:** {{ substr($carga->hora_inicio, 0, 5) }} - {{ substr($carga->hora_fin, 0, 5) }}

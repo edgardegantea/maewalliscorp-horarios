@@ -27,7 +27,7 @@ const ACCESOS_POR_ROL = {
     docente: accesosDocente,
 };
 
-export default function Dashboard() {
+export default function Dashboard({ alertas }) {
     const user = usePage().props.auth.user;
     const esAdmin = user.role === 'admin';
     const accesos = (ACCESOS_POR_ROL[user.role] ?? accesosDocente).filter((a) => route().has(a.name));
@@ -47,6 +47,38 @@ export default function Dashboard() {
                               : 'Portal del docente.'
                     }
                 />
+
+                {alertas && (alertas.grupos_sin_clases.length > 0 || alertas.docentes_sin_disponibilidad.length > 0) && (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-500/20 dark:bg-amber-500/10">
+                        <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-400">
+                            Pendientes en {alertas.periodo}
+                        </h3>
+                        <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                            {alertas.grupos_sin_clases.length > 0 && (
+                                <div>
+                                    <p className="text-sm font-medium text-amber-800 dark:text-amber-400">
+                                        {alertas.grupos_sin_clases.length} grupo(s) sin ninguna clase asignada
+                                    </p>
+                                    <p className="mt-1 text-xs text-amber-700 dark:text-amber-500/80">
+                                        {alertas.grupos_sin_clases.slice(0, 6).join(', ')}
+                                        {alertas.grupos_sin_clases.length > 6 && '…'}
+                                    </p>
+                                </div>
+                            )}
+                            {alertas.docentes_sin_disponibilidad.length > 0 && (
+                                <div>
+                                    <p className="text-sm font-medium text-amber-800 dark:text-amber-400">
+                                        {alertas.docentes_sin_disponibilidad.length} docente(s) sin disponibilidad registrada
+                                    </p>
+                                    <p className="mt-1 text-xs text-amber-700 dark:text-amber-500/80">
+                                        {alertas.docentes_sin_disponibilidad.slice(0, 6).join(', ')}
+                                        {alertas.docentes_sin_disponibilidad.length > 6 && '…'}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
 
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {accesos.map((a) => (

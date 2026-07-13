@@ -4,7 +4,7 @@ import PageHeader from '@/Components/ui/PageHeader';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router } from '@inertiajs/react';
 
-export default function Disponibilidad({ periodo, periodos, bloques }) {
+export default function Disponibilidad({ periodo, periodos, bloques, diasNoLaborables }) {
     const cambiarPeriodo = (periodoId) => {
         router.get(route('docente.disponibilidad.edit', { periodo: periodoId }));
     };
@@ -19,6 +19,20 @@ export default function Disponibilidad({ periodo, periodos, bloques }) {
                     title="Mi disponibilidad"
                     description="Registra los horarios en los que puedes impartir clases."
                 />
+
+                {diasNoLaborables?.length > 0 && (
+                    <div className="rounded-lg bg-amber-50 p-4 text-sm text-amber-800 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-400 dark:ring-amber-500/20">
+                        <p className="font-medium">Días no laborables en este periodo:</p>
+                        <p className="mt-1">
+                            {diasNoLaborables.map((d) => `${d.fecha} — ${d.descripcion}`).join(' · ')}
+                        </p>
+                        <p className="mt-1 text-xs">
+                            Tu disponibilidad se registra por día de la semana; no se imparten clases en estas fechas
+                            aunque caigan en un día que marques disponible.
+                        </p>
+                    </div>
+                )}
+
                 <Card>
                     {periodo ? (
                         <DisponibilidadEditor

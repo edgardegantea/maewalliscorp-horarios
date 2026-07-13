@@ -12,6 +12,8 @@ export default function Create({ carreras, periodos }) {
         semestre: '',
         matricula: '',
         modalidad: 'Escolarizado',
+        hora_inicio: '',
+        hora_fin: '',
     });
 
     const submit = (e) => {
