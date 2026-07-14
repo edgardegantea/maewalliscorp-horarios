@@ -101,9 +101,9 @@ export default function AuthenticatedLayout({ header, children }) {
     const links = (LINKS_POR_ROL[user.role] ?? docenteLinks).filter((link) => route().has(link.name));
 
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+        <div className="min-h-screen bg-slate-50 print:bg-white dark:bg-slate-950">
             {/* Sidebar de escritorio */}
-            <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-slate-200 bg-white lg:flex dark:border-slate-800 dark:bg-slate-900">
+            <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-slate-200 bg-white lg:flex print:hidden dark:border-slate-800 dark:bg-slate-900">
                 <SidebarContent links={links} />
             </aside>
 
@@ -120,8 +120,8 @@ export default function AuthenticatedLayout({ header, children }) {
                 </div>
             )}
 
-            <div className="flex flex-col lg:pl-64">
-                <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-4 border-b border-slate-200 bg-white/80 px-4 backdrop-blur sm:px-6 lg:px-8 dark:border-slate-800 dark:bg-slate-900/80">
+            <div className="flex flex-col lg:pl-64 print:pl-0">
+                <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-4 border-b border-slate-200 bg-white/80 px-4 backdrop-blur sm:px-6 lg:px-8 print:hidden dark:border-slate-800 dark:bg-slate-900/80">
                     <button
                         type="button"
                         onClick={() => setMenuAbierto(true)}
@@ -157,10 +157,12 @@ export default function AuthenticatedLayout({ header, children }) {
                     </Dropdown>
                 </header>
 
-                <FlashBanner />
-                <InactivityLogout />
+                <div className="print:hidden">
+                    <FlashBanner />
+                    <InactivityLogout />
+                </div>
 
-                <main className="flex-1 px-4 py-8 sm:px-6 lg:px-8">{children}</main>
+                <main className="flex-1 px-4 py-8 sm:px-6 lg:px-8 print:p-0">{children}</main>
             </div>
         </div>
     );

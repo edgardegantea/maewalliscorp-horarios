@@ -181,9 +181,8 @@ export default function GrupoHorario({ grupo, slots, dias }) {
                 </div>
 
                 <div className="hidden print:block print:text-center">
-                    <h1 className="text-lg font-semibold">Horario del grupo {grupo.nombre}</h1>
                     <p className="text-sm text-slate-600">
-                        {grupo.carrera.nombre} · {grupo.periodo_escolar.nombre} · Semestre {grupo.semestre}
+                        {grupo.carrera.nombre} · {grupo.periodo_escolar.nombre} · Semestre {grupo.semestre} · Grupo {grupo.nombre}
                     </p>
                 </div>
 
