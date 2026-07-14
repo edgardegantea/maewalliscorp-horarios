@@ -1,4 +1,5 @@
 import Icon from '@/Components/Icon';
+import SelectInput from '@/Components/SelectInput';
 import Card from '@/Components/ui/Card';
 import PageHeader from '@/Components/ui/PageHeader';
 import { secondaryLinkClasses } from '@/buttonStyles';
@@ -85,8 +86,18 @@ function CeldaGrupo({ celda, color, resaltada, atenuada, onHover, onSalir, perio
     );
 }
 
-export default function GrupoHorario({ grupo, slots, dias }) {
+export default function GrupoHorario({ grupo, grupos, slots, dias }) {
     const [asignaturaResaltada, setAsignaturaResaltada] = useState(null);
+
+    const indiceActual = grupos.findIndex((g) => g.id === grupo.id);
+    const anterior = indiceActual > 0 ? grupos[indiceActual - 1] : null;
+    const siguiente = indiceActual !== -1 && indiceActual < grupos.length - 1 ? grupos[indiceActual + 1] : null;
+
+    const irAGrupo = (grupoId) => {
+        if (grupoId) {
+            router.visit(route('admin.cargas.grupo-horario', grupoId));
+        }
+    };
 
     const mapa = {};
     dias.forEach((d) => {
@@ -165,20 +176,75 @@ export default function GrupoHorario({ grupo, slots, dias }) {
                         title={`Horario del grupo ${grupo.nombre}`}
                         description={`${grupo.carrera.nombre} · ${grupo.periodo_escolar.nombre} · Semestre ${grupo.semestre}`}
                         actions={
-                            <div className="flex gap-3">
+                            <div className="flex flex-wrap items-center gap-3">
                                 <Link
                                     href={route('admin.cargas.index', { periodo: grupo.periodo_escolar_id, carrera: grupo.carrera_id })}
                                     className="text-sm font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
                                 >
                                     ← Volver al listado
                                 </Link>
-                                <button type="button" onClick={() => window.print()} className={secondaryLinkClasses}>
+                                {route().has('admin.concentrado.general') && (
+                                    <a
+                                        href={route('admin.concentrado.general', { periodo: grupo.periodo_escolar_id })}
+                                        className={`${secondaryLinkClasses} gap-1.5`}
+                                    >
+                                        <Icon name="download" className="h-4 w-4" />
+                                        Concentrado general
+                                    </a>
+                                )}
+                                {route().has('admin.concentrado.export') && (
+                                    <a
+                                        href={route('admin.concentrado.export', { periodo: grupo.periodo_escolar_id, carrera: grupo.carrera_id })}
+                                        className={`${secondaryLinkClasses} gap-1.5`}
+                                    >
+                                        <Icon name="grid" className="h-4 w-4" />
+                                        Exportar a Excel
+                                    </a>
+                                )}
+                                <button type="button" onClick={() => window.print()} className={`${secondaryLinkClasses} gap-1.5`}>
+                                    <Icon name="download" className="h-4 w-4" />
                                     Imprimir / Exportar PDF
                                 </button>
                             </div>
                         }
                     />
                 </div>
+
+                {grupos.length > 1 && (
+                    <div className="flex items-center justify-between gap-3 print:hidden">
+                        <button
+                            type="button"
+                            onClick={() => irAGrupo(anterior?.id)}
+                            disabled={!anterior}
+                            className="inline-flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-30 dark:text-slate-400 dark:hover:text-slate-200"
+                        >
+                            <Icon name="chevronRight" className="h-4 w-4 rotate-180" />
+                            {anterior ? `Grupo ${anterior.nombre}` : 'Grupo anterior'}
+                        </button>
+
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">Ver grupo</span>
+                            <SelectInput className="block w-44" value={grupo.id} onChange={(e) => irAGrupo(e.target.value)}>
+                                {grupos.map((g) => (
+                                    <option key={g.id} value={g.id}>
+                                        {g.nombre}
+                                        {g.semestre ? ` · Sem. ${g.semestre}` : ''}
+                                    </option>
+                                ))}
+                            </SelectInput>
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={() => irAGrupo(siguiente?.id)}
+                            disabled={!siguiente}
+                            className="inline-flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-30 dark:text-slate-400 dark:hover:text-slate-200"
+                        >
+                            {siguiente ? `Grupo ${siguiente.nombre}` : 'Siguiente grupo'}
+                            <Icon name="chevronRight" className="h-4 w-4" />
+                        </button>
+                    </div>
+                )}
 
                 <div className="hidden print:block print:text-center">
                     <p className="text-sm text-slate-600">

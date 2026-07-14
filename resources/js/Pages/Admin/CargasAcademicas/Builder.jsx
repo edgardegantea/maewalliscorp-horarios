@@ -47,6 +47,10 @@ function leerGrupoPreseleccionadoDesdeUrl() {
     return grupoId ? { motivo: 'grupo', grupo_ids: [Number(grupoId)] } : null;
 }
 
+// El grupo al que realmente se le está asignando la carga (llegó vía
+// "Agregar clase" desde el listado por grupo). La vista previa solo tiene
+// sentido para este grupo puntual, no para cualquier otro de la carrera,
+// para no dar a entender que se está asignando a un grupo distinto.
 function grupoIdDesdeUrl() {
     return new URLSearchParams(window.location.search).get('grupo') ?? '';
 }
@@ -59,7 +63,8 @@ export default function Builder({ periodo, carrera, docentes, asignaturas, grupo
     const [seleccion, setSeleccion] = useState(edicionInicial?.seleccion ?? null);
     const [modalAbierto, setModalAbierto] = useState(Boolean(edicionInicial));
     const [plantilla, setPlantilla] = useState(() => (edicionInicial ? null : leerGrupoPreseleccionadoDesdeUrl()));
-    const [grupoVistaPrevia, setGrupoVistaPrevia] = useState(() => grupoIdDesdeUrl() || grupos[0]?.id || '');
+    const [grupoIdUrl] = useState(grupoIdDesdeUrl);
+    const grupoVistaPrevia = grupos.find((g) => String(g.id) === grupoIdUrl);
 
     const cargarGrid = useCallback(() => {
         if (!docenteId) {
@@ -161,33 +166,17 @@ export default function Builder({ periodo, carrera, docentes, asignaturas, grupo
                             </SelectInput>
                         </div>
 
-                        {grupos.length > 0 && (
-                            <div className="flex items-end gap-2">
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Vista previa de grupo</label>
-                                    <SelectInput
-                                        className="mt-1 block w-56"
-                                        value={grupoVistaPrevia}
-                                        onChange={(e) => setGrupoVistaPrevia(e.target.value)}
-                                    >
-                                        {grupos.map((g) => (
-                                            <option key={g.id} value={g.id}>
-                                                {g.nombre}
-                                            </option>
-                                        ))}
-                                    </SelectInput>
-                                </div>
-                                <a
-                                    href={grupoVistaPrevia ? route('admin.cargas.grupo-horario', grupoVistaPrevia) : '#'}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className={`${secondaryLinkClasses} gap-1.5 ${grupoVistaPrevia ? '' : 'pointer-events-none opacity-50'}`}
-                                    title="Abre el horario semanal de este grupo en una pestaña nueva, para revisar cómo queda antes de publicarlo"
-                                >
-                                    <Icon name="calendar" className="h-4 w-4" />
-                                    Vista previa
-                                </a>
-                            </div>
+                        {grupoVistaPrevia && (
+                            <a
+                                href={route('admin.cargas.grupo-horario', grupoVistaPrevia.id)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={`${secondaryLinkClasses} gap-1.5`}
+                                title={`Abre el horario semanal del grupo ${grupoVistaPrevia.nombre} en una pestaña nueva, para revisar cómo queda antes de publicarlo`}
+                            >
+                                <Icon name="calendar" className="h-4 w-4" />
+                                Vista previa · Grupo {grupoVistaPrevia.nombre}
+                            </a>
                         )}
 
                         <div className="ml-auto flex flex-wrap gap-4 text-xs text-slate-600 dark:text-slate-400">

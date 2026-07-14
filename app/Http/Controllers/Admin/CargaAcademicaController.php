@@ -135,6 +135,15 @@ class CargaAcademicaController extends Controller
 
         $grupo->load('carrera:id,nombre', 'periodoEscolar:id,nombre');
 
+        // Grupos hermanos (misma carrera y periodo) para poder navegar entre
+        // horarios sin volver al listado — este visor actúa como un recorrido
+        // por todas las cargas de la carrera.
+        $grupos = Grupo::where('periodo_escolar_id', $grupo->periodo_escolar_id)
+            ->where('carrera_id', $grupo->carrera_id)
+            ->orderBy('semestre')
+            ->orderBy('nombre')
+            ->get(['id', 'nombre', 'semestre']);
+
         $cargas = CargaAcademica::with(['docente.user', 'asignatura', 'aula', 'grupos'])
             ->whereHas('grupos', fn ($q) => $q->where('grupos.id', $grupo->id))
             ->where('periodo_escolar_id', $grupo->periodo_escolar_id)
@@ -159,6 +168,7 @@ class CargaAcademicaController extends Controller
 
         return Inertia::render('Admin/CargasAcademicas/GrupoHorario', [
             'grupo' => $grupo,
+            'grupos' => $grupos,
             'slots' => $slots,
             'dias' => $dias,
         ]);

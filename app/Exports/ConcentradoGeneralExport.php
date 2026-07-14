@@ -10,9 +10,10 @@ use App\Support\Horario;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromView;
+use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithTitle;
 
-class ConcentradoGeneralExport implements FromView, WithTitle
+class ConcentradoGeneralExport implements FromView, ShouldAutoSize, WithTitle
 {
     /**
      * Paleta de colores sólidos para distinguir cada carrera. Se asignan en
