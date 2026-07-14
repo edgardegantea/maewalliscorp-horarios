@@ -29,33 +29,67 @@ class CargaAcademicaController extends Controller
     {
         $periodoId = $request->integer('periodo') ?: PeriodoEscolar::where('activo', true)->value('id');
         $carreraId = $request->integer('carrera') ?: null;
+        $asignaturaId = $request->integer('asignatura') ?: null;
+        $docenteId = $request->integer('docente') ?: null;
+        $grupoTexto = trim((string) $request->string('grupo'));
+        $estado = $request->string('estado')->toString() ?: null;
 
         if ($carreraId) {
             $this->autorizarCarrera($request, $carreraId);
         }
 
         $grupos = collect();
+        $asignaturasDisponibles = collect();
+        $docentesDisponibles = collect();
 
-        if ($periodoId && $carreraId) {
-            // Incluye cargas cuya carrera "dueña" es otra pero tienen un grupo de
-            // esta carrera combinado (clase compartida entre carreras), para que
-            // sea visible también desde el listado de esta carrera.
-            $cargas = CargaAcademica::with(['docente.user', 'asignatura', 'grupos', 'aula'])
+        if ($periodoId) {
+            // Sin carrera seleccionada, se listan todas las carreras visibles
+            // para el usuario (filtro "Carrera" queda como refinamiento, no
+            // como requisito para ver algo).
+            $carreraIds = $carreraId ? [$carreraId] : $this->carrerasVisibles($request)->pluck('id')->all();
+
+            // Incluye cargas cuya carrera "dueña" es otra pero tienen un grupo
+            // de una de estas carreras combinado (clase compartida entre
+            // carreras), para que sea visible también desde este listado.
+            $todasLasCargas = CargaAcademica::with(['docente.user', 'asignatura', 'grupos', 'aula'])
                 ->where('periodo_escolar_id', $periodoId)
-                ->where(function ($query) use ($carreraId) {
-                    $query->where('carrera_id', $carreraId)
-                        ->orWhereHas('grupos', fn ($q) => $q->where('grupos.carrera_id', $carreraId));
+                ->where(function ($query) use ($carreraIds) {
+                    $query->whereIn('carrera_id', $carreraIds)
+                        ->orWhereHas('grupos', fn ($q) => $q->whereIn('grupos.carrera_id', $carreraIds));
                 })
                 ->orderBy('dia_semana')
                 ->orderBy('hora_inicio')
                 ->get();
 
-            // Organizado por grupo (dentro del periodo y carrera ya seleccionados),
-            // incluyendo los grupos sin cargas para que se vean como pendientes.
-            // Una carga con combinación de grupos aparece en la sección de cada
-            // grupo al que pertenece.
-            $todosLosGrupos = Grupo::where('periodo_escolar_id', $periodoId)
-                ->where('carrera_id', $carreraId)
+            // Opciones de los selects de asignatura/docente, acotadas a lo que
+            // realmente aparece en el periodo y carrera(s) filtrados.
+            $asignaturasDisponibles = $todasLasCargas->pluck('asignatura')
+                ->unique('id')
+                ->sortBy('nombre')
+                ->values()
+                ->map(fn ($a) => ['id' => $a->id, 'nombre' => $a->nombre]);
+
+            $docentesDisponibles = $todasLasCargas->pluck('docente')
+                ->unique('id')
+                ->sortBy(fn ($d) => $d->user->name)
+                ->values()
+                ->map(fn ($d) => ['id' => $d->id, 'nombre' => $d->user->name]);
+
+            // Filtros de búsqueda sobre el conjunto de cargas ya acotado.
+            $cargas = $todasLasCargas
+                ->when($asignaturaId, fn ($c) => $c->where('asignatura_id', $asignaturaId))
+                ->when($docenteId, fn ($c) => $c->where('docente_id', $docenteId))
+                ->when($estado, fn ($c) => $c->where('estado', $estado))
+                ->values();
+
+            // Organizado por grupo (dentro del periodo y las carreras ya
+            // filtradas), incluyendo los grupos sin cargas para que se vean
+            // como pendientes. Una carga con combinación de grupos aparece en
+            // la sección de cada grupo al que pertenece.
+            $todosLosGrupos = Grupo::with('carrera:id,nombre')
+                ->where('periodo_escolar_id', $periodoId)
+                ->whereIn('carrera_id', $carreraIds)
+                ->when($grupoTexto, fn ($q) => $q->where('nombre', 'ilike', "%{$grupoTexto}%"))
                 ->orderBy('semestre')
                 ->orderBy('nombre')
                 ->get();
@@ -64,13 +98,28 @@ class CargaAcademicaController extends Controller
                 'grupo' => $grupo,
                 'cargas' => $cargas->filter(fn (CargaAcademica $c) => $c->grupos->contains('id', $grupo->id))->values(),
             ]);
+
+            // Con un filtro de asignatura/docente/estado activo, solo tiene
+            // sentido mostrar los grupos que efectivamente tienen una clase
+            // que cumpla el criterio (si no, quedarían siempre "0 clases").
+            if ($asignaturaId || $docenteId || $estado) {
+                $grupos = $grupos->filter(fn ($item) => $item['cargas']->isNotEmpty())->values();
+            }
         }
 
         return Inertia::render('Admin/CargasAcademicas/Index', [
             'periodos' => PeriodoEscolar::orderByDesc('fecha_inicio')->get(),
             'carreras' => $this->carrerasVisibles($request)->orderBy('nombre')->get(),
+            'asignaturas' => $asignaturasDisponibles,
+            'docentes' => $docentesDisponibles,
             'periodoSeleccionado' => $periodoId,
             'carreraSeleccionada' => $carreraId,
+            'filtros' => [
+                'asignatura' => $asignaturaId,
+                'docente' => $docenteId,
+                'grupo' => $grupoTexto ?: null,
+                'estado' => $estado,
+            ],
             'grupos' => $grupos,
         ]);
     }
@@ -137,6 +186,7 @@ class CargaAcademicaController extends Controller
                 'hora' => $hora,
                 'ocupado' => true,
                 'asignatura' => $carga->asignatura->nombre,
+                'asignatura_id' => $carga->asignatura_id,
                 'docente' => $carga->docente->user->name,
                 'aula' => $carga->aula->nombre,
                 'hora_inicio' => Horario::hhmm($carga->hora_inicio),
