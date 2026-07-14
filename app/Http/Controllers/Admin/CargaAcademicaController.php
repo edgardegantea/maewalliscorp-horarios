@@ -185,12 +185,18 @@ class CargaAcademicaController extends Controller
             $horas[] = $carga ? [
                 'hora' => $hora,
                 'ocupado' => true,
+                'carga_id' => $carga->id,
                 'asignatura' => $carga->asignatura->nombre,
                 'asignatura_id' => $carga->asignatura_id,
                 'docente' => $carga->docente->user->name,
+                'docente_id' => $carga->docente_id,
                 'aula' => $carga->aula->nombre,
+                'aula_id' => $carga->aula_id,
+                'carrera_id' => $carga->carrera_id,
+                'grupo_ids' => $carga->grupos->pluck('id'),
                 'hora_inicio' => Horario::hhmm($carga->hora_inicio),
                 'hora_fin' => Horario::hhmm($carga->hora_fin),
+                'dia_semana' => $carga->dia_semana,
             ] : [
                 'hora' => $hora,
                 'ocupado' => false,

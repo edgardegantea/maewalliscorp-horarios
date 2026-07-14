@@ -1,0 +1,1 @@
+import{t as e}from"./app-DsDS1Gud.js";var t=e();function n({className:e=``,padded:n=!0,children:r}){return(0,t.jsx)(`div`,{className:`rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 ${n?`p-6`:``} ${e}`,children:r})}export{n as t};

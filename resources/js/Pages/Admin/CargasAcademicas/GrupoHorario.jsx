@@ -1,8 +1,9 @@
+import Icon from '@/Components/Icon';
 import Card from '@/Components/ui/Card';
 import PageHeader from '@/Components/ui/PageHeader';
 import { secondaryLinkClasses } from '@/buttonStyles';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { Fragment, useMemo, useState } from 'react';
 
 const DIAS = [
@@ -38,19 +39,45 @@ const PALETA = [
     { bg: 'bg-orange-100 dark:bg-orange-500/20', ring: 'ring-orange-500' },
 ];
 
-function CeldaGrupo({ celda, color, resaltada, atenuada, onHover, onSalir }) {
+function CeldaGrupo({ celda, color, resaltada, atenuada, onHover, onSalir, periodo, carrera }) {
     if (!celda?.ocupado) {
         return <td className="h-14 border border-slate-200 dark:border-slate-700" />;
     }
 
+    const editar = () => {
+        router.visit(
+            route('admin.cargas.builder', {
+                periodo,
+                carrera: celda.carrera_id ?? carrera,
+                docente: celda.docente_id,
+                editar: celda.carga_id,
+                dia: celda.dia_semana,
+                hora_inicio: celda.hora_inicio,
+                hora_fin: celda.hora_fin,
+                asignatura_id: celda.asignatura_id,
+                aula_id: celda.aula_id,
+                grupo_ids: celda.grupo_ids.join(','),
+            }),
+        );
+    };
+
     return (
         <td
+            role="button"
+            tabIndex={0}
+            title="Editar esta clase"
             onMouseEnter={() => onHover(celda.asignatura_id)}
             onMouseLeave={onSalir}
-            className={`h-14 cursor-default border border-slate-200 px-1 text-center align-middle text-[11px] leading-tight transition dark:border-slate-700 ${color.bg} ${
-                resaltada ? `relative z-10 scale-[1.03] shadow-md ring-2 ${color.ring}` : ''
+            onClick={editar}
+            onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && editar()}
+            className={`group relative h-14 cursor-pointer border border-slate-200 px-1 text-center align-middle text-[11px] leading-tight transition dark:border-slate-700 ${color.bg} ${
+                resaltada ? `z-10 shadow-md ring-2 ${color.ring}` : ''
             } ${atenuada ? 'opacity-30' : ''}`}
         >
+            <Icon
+                name="pencil"
+                className="pointer-events-none absolute right-1 top-1 h-3 w-3 text-slate-400 opacity-0 transition-opacity group-hover:opacity-100 dark:text-slate-500"
+            />
             <div className="truncate font-medium text-slate-800 dark:text-slate-100">{celda.asignatura}</div>
             <div className="truncate text-slate-500 dark:text-slate-400">{celda.docente}</div>
             <div className="truncate text-slate-400 dark:text-slate-500">{celda.aula}</div>
@@ -223,6 +250,8 @@ export default function GrupoHorario({ grupo, slots, dias }) {
                                                         atenuada: asignaturaResaltada != null && id !== asignaturaResaltada,
                                                         onHover: setAsignaturaResaltada,
                                                         onSalir: () => setAsignaturaResaltada(null),
+                                                        periodo: grupo.periodo_escolar_id,
+                                                        carrera: grupo.carrera_id,
                                                     };
                                                 };
 

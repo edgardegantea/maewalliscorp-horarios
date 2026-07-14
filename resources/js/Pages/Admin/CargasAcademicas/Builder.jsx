@@ -1,8 +1,10 @@
+import Icon from '@/Components/Icon';
 import SelectInput from '@/Components/SelectInput';
 import SlotModal from '@/Components/CargaGrid/SlotModal';
 import WeekGrid from '@/Components/CargaGrid/WeekGrid';
 import Card from '@/Components/ui/Card';
 import PageHeader from '@/Components/ui/PageHeader';
+import { secondaryLinkClasses } from '@/buttonStyles';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
 import { useCallback, useEffect, useState } from 'react';
@@ -45,6 +47,10 @@ function leerGrupoPreseleccionadoDesdeUrl() {
     return grupoId ? { motivo: 'grupo', grupo_ids: [Number(grupoId)] } : null;
 }
 
+function grupoIdDesdeUrl() {
+    return new URLSearchParams(window.location.search).get('grupo') ?? '';
+}
+
 export default function Builder({ periodo, carrera, docentes, asignaturas, grupos, aulas, slots }) {
     const [edicionInicial] = useState(leerEdicionDesdeUrl);
     const [docenteId, setDocenteId] = useState(edicionInicial?.docenteId ?? docentes[0]?.id ?? '');
@@ -53,6 +59,7 @@ export default function Builder({ periodo, carrera, docentes, asignaturas, grupo
     const [seleccion, setSeleccion] = useState(edicionInicial?.seleccion ?? null);
     const [modalAbierto, setModalAbierto] = useState(Boolean(edicionInicial));
     const [plantilla, setPlantilla] = useState(() => (edicionInicial ? null : leerGrupoPreseleccionadoDesdeUrl()));
+    const [grupoVistaPrevia, setGrupoVistaPrevia] = useState(() => grupoIdDesdeUrl() || grupos[0]?.id || '');
 
     const cargarGrid = useCallback(() => {
         if (!docenteId) {
@@ -137,7 +144,7 @@ export default function Builder({ periodo, carrera, docentes, asignaturas, grupo
                 />
 
                 <Card>
-                    <div className="flex flex-wrap items-center gap-4">
+                    <div className="flex flex-wrap items-end gap-4">
                         <div>
                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Docente</label>
                             <SelectInput
@@ -153,6 +160,35 @@ export default function Builder({ periodo, carrera, docentes, asignaturas, grupo
                                 ))}
                             </SelectInput>
                         </div>
+
+                        {grupos.length > 0 && (
+                            <div className="flex items-end gap-2">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Vista previa de grupo</label>
+                                    <SelectInput
+                                        className="mt-1 block w-56"
+                                        value={grupoVistaPrevia}
+                                        onChange={(e) => setGrupoVistaPrevia(e.target.value)}
+                                    >
+                                        {grupos.map((g) => (
+                                            <option key={g.id} value={g.id}>
+                                                {g.nombre}
+                                            </option>
+                                        ))}
+                                    </SelectInput>
+                                </div>
+                                <a
+                                    href={grupoVistaPrevia ? route('admin.cargas.grupo-horario', grupoVistaPrevia) : '#'}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className={`${secondaryLinkClasses} gap-1.5 ${grupoVistaPrevia ? '' : 'pointer-events-none opacity-50'}`}
+                                    title="Abre el horario semanal de este grupo en una pestaña nueva, para revisar cómo queda antes de publicarlo"
+                                >
+                                    <Icon name="calendar" className="h-4 w-4" />
+                                    Vista previa
+                                </a>
+                            </div>
+                        )}
 
                         <div className="ml-auto flex flex-wrap gap-4 text-xs text-slate-600 dark:text-slate-400">
                             <Leyenda clase="bg-white border border-slate-300 dark:bg-slate-900 dark:border-slate-600" texto="Disponible" />
