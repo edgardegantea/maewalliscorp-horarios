@@ -10,10 +10,10 @@ use App\Support\Horario;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromView;
-use Maatwebsite\Excel\Concerns\ShouldAutoSize;
+use Maatwebsite\Excel\Concerns\WithColumnWidths;
 use Maatwebsite\Excel\Concerns\WithTitle;
 
-class ConcentradoGeneralExport implements FromView, ShouldAutoSize, WithTitle
+class ConcentradoGeneralExport implements FromView, WithColumnWidths, WithTitle
 {
     /**
      * Paleta de colores sólidos para distinguir cada carrera. Se asignan en
@@ -35,6 +35,9 @@ class ConcentradoGeneralExport implements FromView, ShouldAutoSize, WithTitle
         '37474F', // gris azulado
     ];
 
+    /** @var array<int, array<string, mixed>>|null */
+    private ?array $bloques = null;
+
     public function __construct(
         private readonly PeriodoEscolar $periodo,
     ) {}
@@ -42,13 +45,71 @@ class ConcentradoGeneralExport implements FromView, ShouldAutoSize, WithTitle
     public function view(): View
     {
         return view('exports.concentrado-general', [
-            'bloques' => $this->construirBloques(),
+            'bloques' => $this->bloques(),
         ]);
     }
 
     public function title(): string
     {
         return 'Concentrado';
+    }
+
+    /**
+     * Ancho de columna ajustado al contenido real de cada una (clave, asignatura,
+     * docente y horario por día), en vez de ShouldAutoSize: con celdas fusionadas
+     * en los encabezados de carrera/modalidad, PhpSpreadsheet le atribuye a la
+     * primera columna del merge el ancho completo del texto fusionado, dejando
+     * columnas absurdamente anchas que no reflejan su contenido real.
+     *
+     * @return array<string, int>
+     */
+    public function columnWidths(): array
+    {
+        $bloques = $this->bloques();
+
+        $anchoClave = mb_strlen('CLAVE ASIGNATURA');
+        $anchoAsignatura = mb_strlen('ASIGNATURA');
+        $anchoDocente = mb_strlen('DOCENTE');
+        $anchosDias = array_fill(1, 7, mb_strlen('MIÉRCOLES'));
+
+        foreach ($bloques as $bloque) {
+            foreach ($bloque['filas'] as $fila) {
+                $anchoClave = max($anchoClave, mb_strlen($fila['clave']));
+                $anchoAsignatura = max($anchoAsignatura, mb_strlen($fila['asignatura']));
+                $anchoDocente = max($anchoDocente, mb_strlen($fila['docente']));
+
+                foreach ($fila['dias'] as $numero => $texto) {
+                    $anchoLineaMasLarga = collect(explode("\n", $texto))->map(fn (string $l) => mb_strlen($l))->max();
+                    $anchosDias[$numero] = max($anchosDias[$numero], $anchoLineaMasLarga);
+                }
+            }
+        }
+
+        // +2 de relleno para que el texto no toque el borde de la celda.
+        return [
+            'A' => min($anchoClave + 2, 40),
+            'B' => min($anchoAsignatura + 2, 45),
+            'C' => min($anchoDocente + 2, 40),
+            'D' => min($anchosDias[1] + 2, 35),
+            'E' => min($anchosDias[2] + 2, 35),
+            'F' => min($anchosDias[3] + 2, 35),
+            'G' => min($anchosDias[4] + 2, 35),
+            'H' => min($anchosDias[5] + 2, 35),
+            'I' => min($anchosDias[6] + 2, 35),
+            'J' => min($anchosDias[7] + 2, 35),
+        ];
+    }
+
+    /**
+     * Memoiza el cálculo de bloques: tanto view() como columnWidths() lo
+     * necesitan y no debe reconstruirse (relanzaría las mismas consultas) dos
+     * veces por exportación.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function bloques(): array
+    {
+        return $this->bloques ??= $this->construirBloques();
     }
 
     /**
