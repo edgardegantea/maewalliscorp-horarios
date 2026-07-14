@@ -36,6 +36,15 @@ function leerEdicionDesdeUrl() {
     };
 }
 
+// Grupo preseleccionado vía "Agregar clase" desde el listado por grupo, para
+// que quede marcado de una vez al abrir el modal de la primera selección.
+function leerGrupoPreseleccionadoDesdeUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const grupoId = params.get('grupo');
+
+    return grupoId ? { motivo: 'grupo', grupo_ids: [Number(grupoId)] } : null;
+}
+
 export default function Builder({ periodo, carrera, docentes, asignaturas, grupos, aulas, slots }) {
     const [edicionInicial] = useState(leerEdicionDesdeUrl);
     const [docenteId, setDocenteId] = useState(edicionInicial?.docenteId ?? docentes[0]?.id ?? '');
@@ -43,7 +52,7 @@ export default function Builder({ periodo, carrera, docentes, asignaturas, grupo
     const [cargando, setCargando] = useState(false);
     const [seleccion, setSeleccion] = useState(edicionInicial?.seleccion ?? null);
     const [modalAbierto, setModalAbierto] = useState(Boolean(edicionInicial));
-    const [plantilla, setPlantilla] = useState(null);
+    const [plantilla, setPlantilla] = useState(() => (edicionInicial ? null : leerGrupoPreseleccionadoDesdeUrl()));
 
     const cargarGrid = useCallback(() => {
         if (!docenteId) {
@@ -157,9 +166,11 @@ export default function Builder({ periodo, carrera, docentes, asignaturas, grupo
                 {plantilla && (
                     <div className="flex items-center justify-between rounded-lg bg-indigo-50 p-4 text-sm text-indigo-800 ring-1 ring-inset ring-indigo-600/20 dark:bg-indigo-500/10 dark:text-indigo-400 dark:ring-indigo-500/20">
                         <span>
-                            {plantilla.motivo === 'continuar'
-                                ? `Aún quedan ${plantilla.horasRestantes}h de "${plantilla.asignaturaNombre}" por asignar. Selecciona la siguiente hora en el grid para continuar.`
-                                : 'Selecciona una hora en el grid para duplicar ahí la clase copiada.'}
+                            {plantilla.motivo === 'continuar' &&
+                                `Aún quedan ${plantilla.horasRestantes}h de "${plantilla.asignaturaNombre}" por asignar. Selecciona la siguiente hora en el grid para continuar.`}
+                            {plantilla.motivo === 'grupo' &&
+                                'Selecciona una hora en el grid para agregar una clase a este grupo.'}
+                            {!plantilla.motivo && 'Selecciona una hora en el grid para duplicar ahí la clase copiada.'}
                         </span>
                         <button
                             type="button"

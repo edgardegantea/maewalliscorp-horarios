@@ -254,7 +254,9 @@ export default function SlotModal({
 
                 {prellenado && (
                     <div className="mt-3 rounded-md bg-indigo-50 p-3 text-sm text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400">
-                        Duplicando asignatura, grupo(s) y aula de otra clase. Ajusta lo que necesites y guarda.
+                        {prellenado.motivo === 'grupo'
+                            ? 'Grupo preseleccionado. Elige asignatura y aula para completar la asignación.'
+                            : 'Duplicando asignatura, grupo(s) y aula de otra clase. Ajusta lo que necesites y guarda.'}
                     </div>
                 )}
 

@@ -108,60 +108,82 @@ class CargaAcademicaBuilderController extends Controller
             $bloquesDia = $disponibilidad->where('dia_semana', $dia);
             $cargasDia = $cargasDocente->where('dia_semana', $dia);
 
-            $horas = [];
-
-            foreach ($slots as $hora) {
-                $inicioMin = Horario::aMinutos($hora);
-                $finMin = $inicioMin + 60;
-
-                $carga = $cargasDia->first(function (CargaAcademica $c) use ($inicioMin, $finMin) {
-                    return Horario::aMinutos($c->hora_inicio) < $finMin
-                        && Horario::aMinutos($c->hora_fin) > $inicioMin;
-                });
-
-                if ($carga) {
-                    $esDeEstaCarrera = $carga->carrera_id === $carreraId
-                        || $carga->grupos->contains('carrera_id', $carreraId);
-
-                    $horas[] = [
-                        'hora' => $hora,
-                        'estado' => $esDeEstaCarrera ? 'reservado_actual' : 'reservado_otro',
-                        'carga_id' => $carga->id,
-                        'asignatura' => $carga->asignatura->nombre,
-                        'asignatura_id' => $carga->asignatura_id,
-                        'grupo' => $carga->nombreGrupos(),
-                        'grupo_ids' => $carga->grupos->pluck('id'),
-                        'aula' => $carga->aula->nombre,
-                        'aula_id' => $carga->aula_id,
-                        'hora_inicio' => Horario::hhmm($carga->hora_inicio),
-                        'hora_fin' => Horario::hhmm($carga->hora_fin),
-                    ];
-
-                    continue;
-                }
-
-                $dentro = $bloquesDia->contains(function ($b) use ($inicioMin, $finMin) {
-                    return $inicioMin >= Horario::aMinutos($b->hora_inicio)
-                        && $finMin <= Horario::aMinutos($b->hora_fin);
-                });
-
-                $horas[] = [
-                    'hora' => $hora,
-                    'estado' => $dentro ? 'disponible' : 'fuera_disponibilidad',
-                ];
-            }
-
             $dias[] = [
                 'dia_semana' => $dia,
                 'disponibilidad' => $bloquesDia->map(fn ($b) => [
                     'hora_inicio' => Horario::hhmm($b->hora_inicio),
                     'hora_fin' => Horario::hhmm($b->hora_fin),
                 ])->values(),
-                'horas' => $horas,
+                // El sábado se divide visualmente en dos columnas (módulo 1 y
+                // módulo 2) porque un mismo docente puede tener, en el mismo
+                // horario, una asignatura de cada módulo (distintas semanas).
+                'horas' => $dia === 6
+                    ? $this->construirHoras($slots, $cargasDia->filter(fn (CargaAcademica $c) => (int) ($c->asignatura->modulo_sabatino ?? 1) !== 2), $bloquesDia, $carreraId)
+                    : $this->construirHoras($slots, $cargasDia, $bloquesDia, $carreraId),
+                'horas_modulo2' => $dia === 6
+                    ? $this->construirHoras($slots, $cargasDia->filter(fn (CargaAcademica $c) => (int) ($c->asignatura->modulo_sabatino ?? 1) === 2), $bloquesDia, $carreraId)
+                    : null,
             ];
         }
 
         return response()->json(['dias' => $dias]);
+    }
+
+    /**
+     * Construye el arreglo de celdas por hora para un día (o para uno de los
+     * dos módulos del sábado), a partir del conjunto de cargas ya filtrado.
+     *
+     * @param  array<int, string>  $slots
+     * @param  \Illuminate\Support\Collection<int, CargaAcademica>  $cargasDia
+     * @param  \Illuminate\Support\Collection<int, DisponibilidadDocente>  $bloquesDia
+     * @return array<int, array<string, mixed>>
+     */
+    private function construirHoras(array $slots, $cargasDia, $bloquesDia, int $carreraId): array
+    {
+        $horas = [];
+
+        foreach ($slots as $hora) {
+            $inicioMin = Horario::aMinutos($hora);
+            $finMin = $inicioMin + 60;
+
+            $carga = $cargasDia->first(function (CargaAcademica $c) use ($inicioMin, $finMin) {
+                return Horario::aMinutos($c->hora_inicio) < $finMin
+                    && Horario::aMinutos($c->hora_fin) > $inicioMin;
+            });
+
+            if ($carga) {
+                $esDeEstaCarrera = $carga->carrera_id === $carreraId
+                    || $carga->grupos->contains('carrera_id', $carreraId);
+
+                $horas[] = [
+                    'hora' => $hora,
+                    'estado' => $esDeEstaCarrera ? 'reservado_actual' : 'reservado_otro',
+                    'carga_id' => $carga->id,
+                    'asignatura' => $carga->asignatura->nombre,
+                    'asignatura_id' => $carga->asignatura_id,
+                    'grupo' => $carga->nombreGrupos(),
+                    'grupo_ids' => $carga->grupos->pluck('id'),
+                    'aula' => $carga->aula->nombre,
+                    'aula_id' => $carga->aula_id,
+                    'hora_inicio' => Horario::hhmm($carga->hora_inicio),
+                    'hora_fin' => Horario::hhmm($carga->hora_fin),
+                ];
+
+                continue;
+            }
+
+            $dentro = $bloquesDia->contains(function ($b) use ($inicioMin, $finMin) {
+                return $inicioMin >= Horario::aMinutos($b->hora_inicio)
+                    && $finMin <= Horario::aMinutos($b->hora_fin);
+            });
+
+            $horas[] = [
+                'hora' => $hora,
+                'estado' => $dentro ? 'disponible' : 'fuera_disponibilidad',
+            ];
+        }
+
+        return $horas;
     }
 
     public function verificar(Request $request, VerificarDisponibilidadAction $accion): JsonResponse

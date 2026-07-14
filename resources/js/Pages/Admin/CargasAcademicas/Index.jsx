@@ -29,12 +29,8 @@ function GrupoSection({ item, periodo, carrera }) {
 
     return (
         <Card padded={false}>
-            <button
-                type="button"
-                onClick={() => setAbierto((a) => !a)}
-                className="flex w-full items-center justify-between border-b border-slate-200 px-4 py-3 text-left dark:border-slate-800"
-            >
-                <div className="flex items-center gap-2">
+            <div className="flex w-full items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+                <button type="button" onClick={() => setAbierto((a) => !a)} className="flex flex-1 items-center gap-2 text-left">
                     <svg
                         className={`h-4 w-4 shrink-0 text-slate-400 transition-transform dark:text-slate-500 ${abierto ? 'rotate-90' : ''}`}
                         fill="none"
@@ -46,11 +42,25 @@ function GrupoSection({ item, periodo, carrera }) {
                     <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Grupo {grupo.nombre}</h3>
                     {grupo.semestre && <Badge color="slate">Semestre {grupo.semestre}</Badge>}
                     <Badge color="indigo">{grupo.matricula} alumnos</Badge>
+                </button>
+                <div className="flex items-center gap-4">
+                    <span className="text-xs text-slate-400 dark:text-slate-500">
+                        {cargas.length} {cargas.length === 1 ? 'clase asignada' : 'clases asignadas'}
+                    </span>
+                    <Link
+                        href={route('admin.cargas.grupo-horario', grupo.id)}
+                        className="text-xs font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
+                    >
+                        Ver horario
+                    </Link>
+                    <Link
+                        href={route('admin.cargas.builder', { periodo, carrera, grupo: grupo.id })}
+                        className="text-xs font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
+                    >
+                        Agregar clase
+                    </Link>
                 </div>
-                <span className="text-xs text-slate-400 dark:text-slate-500">
-                    {cargas.length} {cargas.length === 1 ? 'clase asignada' : 'clases asignadas'}
-                </span>
-            </button>
+            </div>
 
             {abierto && (cargas.length === 0 ? (
                 <p className="px-4 py-6 text-sm text-slate-400 dark:text-slate-500">Sin cargas académicas asignadas todavía.</p>

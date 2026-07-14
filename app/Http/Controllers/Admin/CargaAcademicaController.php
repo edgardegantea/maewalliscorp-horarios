@@ -12,6 +12,7 @@ use App\Models\CargaAcademica;
 use App\Models\Grupo;
 use App\Models\PeriodoEscolar;
 use App\Models\RegistroActividad;
+use App\Support\Horario;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -72,6 +73,81 @@ class CargaAcademicaController extends Controller
             'carreraSeleccionada' => $carreraId,
             'grupos' => $grupos,
         ]);
+    }
+
+    /**
+     * Vista de solo lectura con el horario semanal completo de un grupo (las
+     * clases se repiten cada semana durante el periodo), pensada para
+     * imprimir/exportar y compartir con docentes y estudiantes.
+     */
+    public function horarioGrupo(Request $request, Grupo $grupo): Response
+    {
+        $this->autorizarCarrera($request, $grupo->carrera_id);
+
+        $grupo->load('carrera:id,nombre', 'periodoEscolar:id,nombre');
+
+        $cargas = CargaAcademica::with(['docente.user', 'asignatura', 'aula', 'grupos'])
+            ->whereHas('grupos', fn ($q) => $q->where('grupos.id', $grupo->id))
+            ->where('periodo_escolar_id', $grupo->periodo_escolar_id)
+            ->get();
+
+        $slots = Horario::slots();
+        $dias = [];
+
+        foreach (range(1, 7) as $dia) {
+            $cargasDia = $cargas->where('dia_semana', $dia);
+
+            $dias[] = [
+                'dia_semana' => $dia,
+                'horas' => $dia === 6
+                    ? $this->construirHorasGrupo($slots, $cargasDia->filter(fn (CargaAcademica $c) => (int) ($c->asignatura->modulo_sabatino ?? 1) !== 2))
+                    : $this->construirHorasGrupo($slots, $cargasDia),
+                'horas_modulo2' => $dia === 6
+                    ? $this->construirHorasGrupo($slots, $cargasDia->filter(fn (CargaAcademica $c) => (int) ($c->asignatura->modulo_sabatino ?? 1) === 2))
+                    : null,
+            ];
+        }
+
+        return Inertia::render('Admin/CargasAcademicas/GrupoHorario', [
+            'grupo' => $grupo,
+            'slots' => $slots,
+            'dias' => $dias,
+        ]);
+    }
+
+    /**
+     * @param  array<int, string>  $slots
+     * @param  \Illuminate\Support\Collection<int, CargaAcademica>  $cargasDia
+     * @return array<int, array<string, mixed>>
+     */
+    private function construirHorasGrupo(array $slots, $cargasDia): array
+    {
+        $horas = [];
+
+        foreach ($slots as $hora) {
+            $inicioMin = Horario::aMinutos($hora);
+            $finMin = $inicioMin + 60;
+
+            $carga = $cargasDia->first(function (CargaAcademica $c) use ($inicioMin, $finMin) {
+                return Horario::aMinutos($c->hora_inicio) < $finMin
+                    && Horario::aMinutos($c->hora_fin) > $inicioMin;
+            });
+
+            $horas[] = $carga ? [
+                'hora' => $hora,
+                'ocupado' => true,
+                'asignatura' => $carga->asignatura->nombre,
+                'docente' => $carga->docente->user->name,
+                'aula' => $carga->aula->nombre,
+                'hora_inicio' => Horario::hhmm($carga->hora_inicio),
+                'hora_fin' => Horario::hhmm($carga->hora_fin),
+            ] : [
+                'hora' => $hora,
+                'ocupado' => false,
+            ];
+        }
+
+        return $horas;
     }
 
     public function store(StoreCargaAcademicaRequest $request, GuardarCargaAcademicaAction $accion): RedirectResponse

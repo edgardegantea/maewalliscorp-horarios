@@ -69,6 +69,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('cargas-academicas/grid-data', [CargaAcademicaBuilderController::class, 'gridData'])->name('cargas.grid-data');
         Route::post('cargas-academicas/verificar', [CargaAcademicaBuilderController::class, 'verificar'])->name('cargas.verificar');
         Route::post('cargas-academicas/horas-asignaturas', [CargaAcademicaBuilderController::class, 'horasPorAsignaturas'])->name('cargas.horas-asignaturas');
+        Route::get('cargas-academicas/grupos/{grupo}/horario', [CargaAcademicaController::class, 'horarioGrupo'])->name('cargas.grupo-horario');
 
         Route::get('concentrado/export', ConcentradoExportController::class)->name('concentrado.export');
 

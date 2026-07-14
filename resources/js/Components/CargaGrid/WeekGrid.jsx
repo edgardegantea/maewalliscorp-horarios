@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import Cell from './Cell';
 
 const DIAS = [
@@ -11,6 +11,8 @@ const DIAS = [
     { value: 7, label: 'Dom' },
 ];
 
+const DIA_SABADO = 6;
+
 // Suma una hora a "HH:00" -> "HH+1:00".
 const siguienteHora = (hora) => {
     const h = parseInt(hora.slice(0, 2), 10) + 1;
@@ -18,20 +20,25 @@ const siguienteHora = (hora) => {
 };
 
 export default function WeekGrid({ dias, slots, onSeleccion, onClickReservado }) {
-    const [arrastre, setArrastre] = useState(null); // { dia, desde, hasta } (índices de slot)
+    // arrastre: { dia, modulo, desde, hasta } (índices de slot). `modulo` es
+    // 1 o 2 solo para el sábado, que se muestra en dos columnas paralelas.
+    const [arrastre, setArrastre] = useState(null);
 
-    // Índice rápido: dias[diaSemana][hora] -> celda
+    // Índice rápido: dias[diaSemana][modulo][hora] -> celda
     const mapa = {};
     dias.forEach((d) => {
-        mapa[d.dia_semana] = {};
+        mapa[d.dia_semana] = { 1: {}, 2: {} };
         d.horas.forEach((h, idx) => {
-            mapa[d.dia_semana][idx] = h;
+            mapa[d.dia_semana][1][idx] = h;
+        });
+        (d.horas_modulo2 ?? []).forEach((h, idx) => {
+            mapa[d.dia_semana][2][idx] = h;
         });
     });
 
-    const celdaEn = (dia, idx) => mapa[dia]?.[idx];
+    const celdaEn = (dia, modulo, idx) => mapa[dia]?.[modulo]?.[idx];
 
-    const iniciar = (celda, dia, idx) => {
+    const iniciar = (celda, dia, modulo, idx) => {
         if (celda.estado === 'reservado_actual') {
             onClickReservado?.(celda);
             return;
@@ -39,18 +46,18 @@ export default function WeekGrid({ dias, slots, onSeleccion, onClickReservado })
         if (celda.estado !== 'disponible') {
             return;
         }
-        setArrastre({ dia, desde: idx, hasta: idx });
+        setArrastre({ dia, modulo, desde: idx, hasta: idx });
     };
 
-    const extender = (dia, idx) => {
-        if (!arrastre || arrastre.dia !== dia) {
+    const extender = (dia, modulo, idx) => {
+        if (!arrastre || arrastre.dia !== dia || arrastre.modulo !== modulo) {
             return;
         }
         // Solo extiende a través de celdas contiguas disponibles.
         const paso = idx > arrastre.desde ? 1 : -1;
         let limite = arrastre.desde;
         for (let i = arrastre.desde; i !== idx + paso; i += paso) {
-            const c = celdaEn(dia, i);
+            const c = celdaEn(dia, modulo, i);
             if (!c || c.estado !== 'disponible') {
                 break;
             }
@@ -67,6 +74,7 @@ export default function WeekGrid({ dias, slots, onSeleccion, onClickReservado })
                     const hasta = Math.max(actual.desde, actual.hasta);
                     onSeleccion({
                         dia_semana: actual.dia,
+                        modulo_sabatino: actual.dia === DIA_SABADO ? actual.modulo : null,
                         hora_inicio: slots[desde],
                         hora_fin: siguienteHora(slots[hasta]),
                     });
@@ -79,8 +87,8 @@ export default function WeekGrid({ dias, slots, onSeleccion, onClickReservado })
         return () => window.removeEventListener('mouseup', soltar);
     }, [onSeleccion, slots]);
 
-    const estaSeleccionada = (dia, idx) => {
-        if (!arrastre || arrastre.dia !== dia) {
+    const estaSeleccionada = (dia, modulo, idx) => {
+        if (!arrastre || arrastre.dia !== dia || arrastre.modulo !== modulo) {
             return false;
         }
         const desde = Math.min(arrastre.desde, arrastre.hasta);
@@ -93,23 +101,43 @@ export default function WeekGrid({ dias, slots, onSeleccion, onClickReservado })
             <table className="w-full table-fixed border-collapse">
                 <colgroup>
                     <col className="w-28" />
-                    {DIAS.map((d) => (
-                        <col key={d.value} />
-                    ))}
+                    {DIAS.map((d) =>
+                        d.value === DIA_SABADO ? (
+                            <Fragment key={d.value}>
+                                <col />
+                                <col />
+                            </Fragment>
+                        ) : (
+                            <col key={d.value} />
+                        ),
+                    )}
                 </colgroup>
                 <thead>
                     <tr>
-                        <th className="border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
+                        <th
+                            rowSpan={2}
+                            className="border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"
+                        >
                             Hora
                         </th>
                         {DIAS.map((d) => (
                             <th
                                 key={d.value}
+                                colSpan={d.value === DIA_SABADO ? 2 : 1}
+                                rowSpan={d.value === DIA_SABADO ? 1 : 2}
                                 className="border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
                             >
                                 {d.label}
                             </th>
                         ))}
+                    </tr>
+                    <tr>
+                        <th className="border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-normal text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
+                            Mód. 1
+                        </th>
+                        <th className="border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-normal text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
+                            Mód. 2
+                        </th>
                     </tr>
                 </thead>
                 <tbody>
@@ -119,15 +147,37 @@ export default function WeekGrid({ dias, slots, onSeleccion, onClickReservado })
                                 {hora}–{siguienteHora(hora)}
                             </td>
                             {DIAS.map((d) => {
-                                const celda = celdaEn(d.value, idx) ?? { estado: 'fuera_disponibilidad', hora };
+                                if (d.value !== DIA_SABADO) {
+                                    const celda = celdaEn(d.value, 1, idx) ?? { estado: 'fuera_disponibilidad', hora };
+                                    return (
+                                        <Cell
+                                            key={`${d.value}-${hora}`}
+                                            celda={celda}
+                                            seleccionada={estaSeleccionada(d.value, 1, idx)}
+                                            onMouseDown={(c) => iniciar(c, d.value, 1, idx)}
+                                            onMouseEnter={() => extender(d.value, 1, idx)}
+                                        />
+                                    );
+                                }
+
+                                const celdaM1 = celdaEn(d.value, 1, idx) ?? { estado: 'fuera_disponibilidad', hora };
+                                const celdaM2 = celdaEn(d.value, 2, idx) ?? { estado: 'fuera_disponibilidad', hora };
+
                                 return (
-                                    <Cell
-                                        key={`${d.value}-${hora}`}
-                                        celda={celda}
-                                        seleccionada={estaSeleccionada(d.value, idx)}
-                                        onMouseDown={(c) => iniciar(c, d.value, idx)}
-                                        onMouseEnter={() => extender(d.value, idx)}
-                                    />
+                                    <Fragment key={`${d.value}-${hora}`}>
+                                        <Cell
+                                            celda={celdaM1}
+                                            seleccionada={estaSeleccionada(d.value, 1, idx)}
+                                            onMouseDown={(c) => iniciar(c, d.value, 1, idx)}
+                                            onMouseEnter={() => extender(d.value, 1, idx)}
+                                        />
+                                        <Cell
+                                            celda={celdaM2}
+                                            seleccionada={estaSeleccionada(d.value, 2, idx)}
+                                            onMouseDown={(c) => iniciar(c, d.value, 2, idx)}
+                                            onMouseEnter={() => extender(d.value, 2, idx)}
+                                        />
+                                    </Fragment>
                                 );
                             })}
                         </tr>
