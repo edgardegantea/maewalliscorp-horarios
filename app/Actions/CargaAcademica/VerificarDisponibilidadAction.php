@@ -39,20 +39,26 @@ class VerificarDisponibilidadAction
     ): ResultadoVerificacion {
         $conflictos = [];
 
-        $conflictoDocente = $this->buscarConflicto('docente_id', $docenteId, $periodoEscolarId, $diaSemana, $horaInicio, $horaFin, $ignorarCargaId);
+        // Los sábados hay dos módulos que ocurren en franjas de tiempo distintas
+        // aunque compartan la misma rejilla de horas en la UI; un mismo
+        // docente/aula/grupo puede tener una clase en cada módulo dentro del
+        // "mismo horario" (misma hora_inicio/hora_fin) sin que sea un choque real.
+        $moduloSabatino = $diaSemana === 6 ? $this->moduloDeAsignatura($asignaturaId) : null;
+
+        $conflictoDocente = $this->buscarConflicto('docente_id', $docenteId, $periodoEscolarId, $diaSemana, $horaInicio, $horaFin, $ignorarCargaId, $moduloSabatino);
         if ($conflictoDocente) {
             $conflictos[] = ['tipo' => 'docente', 'mensaje' => 'El docente ya tiene una clase en ese horario.'];
         }
 
         if ($aulaId !== null) {
-            $conflictoAula = $this->buscarConflicto('aula_id', $aulaId, $periodoEscolarId, $diaSemana, $horaInicio, $horaFin, $ignorarCargaId);
+            $conflictoAula = $this->buscarConflicto('aula_id', $aulaId, $periodoEscolarId, $diaSemana, $horaInicio, $horaFin, $ignorarCargaId, $moduloSabatino);
             if ($conflictoAula) {
                 $conflictos[] = ['tipo' => 'aula', 'mensaje' => 'El aula ya está ocupada en ese horario.'];
             }
         }
 
         foreach ($grupoIds as $grupoId) {
-            if ($this->buscarConflictoGrupo($grupoId, $periodoEscolarId, $diaSemana, $horaInicio, $horaFin, $ignorarCargaId)) {
+            if ($this->buscarConflictoGrupo($grupoId, $periodoEscolarId, $diaSemana, $horaInicio, $horaFin, $ignorarCargaId, $moduloSabatino)) {
                 $conflictos[] = ['tipo' => 'grupo', 'mensaje' => 'Uno de los grupos seleccionados ya tiene clase en ese horario.'];
                 break;
             }
@@ -95,9 +101,13 @@ class VerificarDisponibilidadAction
         string $horaInicio,
         string $horaFin,
         ?int $ignorarCargaId,
+        ?int $moduloSabatino = null,
     ): bool {
         return DB::table('carga_academica_grupo')
             ->join('cargas_academicas', 'cargas_academicas.id', '=', 'carga_academica_grupo.carga_academica_id')
+            ->when($moduloSabatino !== null, fn ($q) => $q->join('asignaturas', 'asignaturas.id', '=', 'cargas_academicas.asignatura_id')
+                ->where(fn ($q2) => $q2->where('asignaturas.modulo_sabatino', $moduloSabatino)
+                    ->orWhere(fn ($q3) => $moduloSabatino !== 2 ? $q3->whereNull('asignaturas.modulo_sabatino') : $q3->whereRaw('1 = 0'))))
             ->where('carga_academica_grupo.grupo_id', $grupoId)
             ->where('cargas_academicas.periodo_escolar_id', $periodoEscolarId)
             ->where('cargas_academicas.dia_semana', $diaSemana)
@@ -105,6 +115,22 @@ class VerificarDisponibilidadAction
             ->where('cargas_academicas.hora_inicio', '<', $horaFin)
             ->where('cargas_academicas.hora_fin', '>', $horaInicio)
             ->exists();
+    }
+
+    /**
+     * Módulo sabatino (1 o 2) de una asignatura; null si no se declaró
+     * asignatura (no se puede acotar el conflicto por módulo en ese caso, así
+     * que se trata como si aplicara a cualquier módulo).
+     */
+    private function moduloDeAsignatura(?int $asignaturaId): ?int
+    {
+        if ($asignaturaId === null) {
+            return null;
+        }
+
+        $asignatura = Asignatura::find($asignaturaId);
+
+        return $asignatura ? (int) ($asignatura->modulo_sabatino ?? 1) : null;
     }
 
     /**
@@ -306,8 +332,11 @@ class VerificarDisponibilidadAction
         string $horaInicio,
         string $horaFin,
         ?int $ignorarCargaId,
+        ?int $moduloSabatino = null,
     ): bool {
         return CargaAcademica::query()
+            ->when($moduloSabatino !== null, fn ($q) => $q->whereHas('asignatura', fn ($q2) => $q2->where('modulo_sabatino', $moduloSabatino)
+                ->when($moduloSabatino !== 2, fn ($q3) => $q3->orWhereNull('modulo_sabatino'))))
             ->where('periodo_escolar_id', $periodoEscolarId)
             ->where('dia_semana', $diaSemana)
             ->where($columna, $valor)

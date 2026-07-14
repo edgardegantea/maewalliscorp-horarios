@@ -403,3 +403,81 @@ it('no valida horario de grupo cuando el grupo no tiene uno definido', function 
 
     expect(CargaAcademica::count())->toBe(1);
 });
+
+it('permite repetir docente, aula y grupo en el mismo horario del sábado si son de módulos distintos', function () {
+    $e = escenario();
+    $grupoSabatino = Grupo::create(['carrera_id' => $e['carrera']->id, 'periodo_escolar_id' => $e['periodo']->id, 'nombre' => '1F', 'matricula' => 30]);
+    $asignaturaModulo1 = Asignatura::create(['carrera_id' => $e['carrera']->id, 'nombre' => 'Materia Mod1', 'clave' => 'MOD1', 'modulo_sabatino' => 1]);
+    $asignaturaModulo2 = Asignatura::create(['carrera_id' => $e['carrera']->id, 'nombre' => 'Materia Mod2', 'clave' => 'MOD2', 'modulo_sabatino' => 2]);
+
+    DisponibilidadDocente::create([
+        'docente_id' => $e['docente']->id,
+        'periodo_escolar_id' => $e['periodo']->id,
+        'dia_semana' => 6,
+        'hora_inicio' => '08:00',
+        'hora_fin' => '20:00',
+    ]);
+
+    app(GuardarCargaAcademicaAction::class)->ejecutar(
+        datosCarga($e, [
+            'asignatura_id' => $asignaturaModulo1->id,
+            'grupo_ids' => [$grupoSabatino->id],
+            'dia_semana' => 6,
+            'hora_inicio' => '08:00',
+            'hora_fin' => '09:00',
+        ]),
+        $e['admin']->id,
+    );
+
+    // Mismo docente, aula, grupo y horario, pero asignatura de módulo 2: no debe chocar.
+    $cargaModulo2 = app(GuardarCargaAcademicaAction::class)->ejecutar(
+        datosCarga($e, [
+            'asignatura_id' => $asignaturaModulo2->id,
+            'grupo_ids' => [$grupoSabatino->id],
+            'dia_semana' => 6,
+            'hora_inicio' => '08:00',
+            'hora_fin' => '09:00',
+        ]),
+        $e['admin']->id,
+    );
+
+    expect(CargaAcademica::count())->toBe(2);
+    expect($cargaModulo2->exists)->toBeTrue();
+});
+
+it('sigue detectando choque de docente en sábado entre dos cargas del mismo módulo', function () {
+    $e = escenario();
+    $grupoSabatino = Grupo::create(['carrera_id' => $e['carrera']->id, 'periodo_escolar_id' => $e['periodo']->id, 'nombre' => '1F', 'matricula' => 30]);
+    $otroGrupoSabatino = Grupo::create(['carrera_id' => $e['carrera']->id, 'periodo_escolar_id' => $e['periodo']->id, 'nombre' => '2F', 'matricula' => 30]);
+    $asignaturaModulo1 = Asignatura::create(['carrera_id' => $e['carrera']->id, 'nombre' => 'Materia Mod1', 'clave' => 'MOD1', 'modulo_sabatino' => 1]);
+
+    DisponibilidadDocente::create([
+        'docente_id' => $e['docente']->id,
+        'periodo_escolar_id' => $e['periodo']->id,
+        'dia_semana' => 6,
+        'hora_inicio' => '08:00',
+        'hora_fin' => '20:00',
+    ]);
+
+    app(GuardarCargaAcademicaAction::class)->ejecutar(
+        datosCarga($e, [
+            'asignatura_id' => $asignaturaModulo1->id,
+            'grupo_ids' => [$grupoSabatino->id],
+            'dia_semana' => 6,
+            'hora_inicio' => '08:00',
+            'hora_fin' => '09:00',
+        ]),
+        $e['admin']->id,
+    );
+
+    app(GuardarCargaAcademicaAction::class)->ejecutar(
+        datosCarga($e, [
+            'asignatura_id' => $asignaturaModulo1->id,
+            'grupo_ids' => [$otroGrupoSabatino->id],
+            'dia_semana' => 6,
+            'hora_inicio' => '08:00',
+            'hora_fin' => '09:00',
+        ]),
+        $e['admin']->id,
+    );
+})->throws(ValidationException::class);

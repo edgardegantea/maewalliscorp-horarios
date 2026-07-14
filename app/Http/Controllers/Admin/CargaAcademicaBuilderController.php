@@ -83,6 +83,7 @@ class CargaAcademicaBuilderController extends Controller
             'periodo' => ['required', 'exists:periodos_escolares,id'],
             'carrera' => ['required', 'exists:carreras,id'],
             'docente' => ['required', 'exists:docentes,id'],
+            'grupo' => ['nullable', 'exists:grupos,id'],
         ]);
 
         $this->autorizarCarrera($request, (int) $datos['carrera']);
@@ -90,6 +91,7 @@ class CargaAcademicaBuilderController extends Controller
         $periodoId = (int) $datos['periodo'];
         $carreraId = (int) $datos['carrera'];
         $docenteId = (int) $datos['docente'];
+        $grupo = isset($datos['grupo']) ? Grupo::find($datos['grupo']) : null;
 
         $disponibilidad = DisponibilidadDocente::where('docente_id', $docenteId)
             ->where('periodo_escolar_id', $periodoId)
@@ -101,12 +103,23 @@ class CargaAcademicaBuilderController extends Controller
             ->where('docente_id', $docenteId)
             ->get();
 
+        // Todas las cargas del grupo en contexto, con cualquier docente — para
+        // superponer en el grid dónde el grupo ya está ocupado aunque el
+        // docente seleccionado esté libre.
+        $cargasGrupo = $grupo
+            ? CargaAcademica::with(['asignatura', 'docente.user'])
+                ->where('periodo_escolar_id', $periodoId)
+                ->whereHas('grupos', fn ($q) => $q->where('grupos.id', $grupo->id))
+                ->get()
+            : collect();
+
         $slots = Horario::slots();
         $dias = [];
 
         foreach (range(1, 7) as $dia) {
             $bloquesDia = $disponibilidad->where('dia_semana', $dia);
             $cargasDia = $cargasDocente->where('dia_semana', $dia);
+            $cargasGrupoDia = $cargasGrupo->where('dia_semana', $dia);
 
             $dias[] = [
                 'dia_semana' => $dia,
@@ -118,10 +131,10 @@ class CargaAcademicaBuilderController extends Controller
                 // módulo 2) porque un mismo docente puede tener, en el mismo
                 // horario, una asignatura de cada módulo (distintas semanas).
                 'horas' => $dia === 6
-                    ? $this->construirHoras($slots, $cargasDia->filter(fn (CargaAcademica $c) => (int) ($c->asignatura->modulo_sabatino ?? 1) !== 2), $bloquesDia, $carreraId)
-                    : $this->construirHoras($slots, $cargasDia, $bloquesDia, $carreraId),
+                    ? $this->construirHoras($slots, $cargasDia->filter(fn (CargaAcademica $c) => (int) ($c->asignatura->modulo_sabatino ?? 1) !== 2), $bloquesDia, $carreraId, $grupo, $cargasGrupoDia->filter(fn (CargaAcademica $c) => (int) ($c->asignatura->modulo_sabatino ?? 1) !== 2))
+                    : $this->construirHoras($slots, $cargasDia, $bloquesDia, $carreraId, $grupo, $cargasGrupoDia),
                 'horas_modulo2' => $dia === 6
-                    ? $this->construirHoras($slots, $cargasDia->filter(fn (CargaAcademica $c) => (int) ($c->asignatura->modulo_sabatino ?? 1) === 2), $bloquesDia, $carreraId)
+                    ? $this->construirHoras($slots, $cargasDia->filter(fn (CargaAcademica $c) => (int) ($c->asignatura->modulo_sabatino ?? 1) === 2), $bloquesDia, $carreraId, $grupo, $cargasGrupoDia->filter(fn (CargaAcademica $c) => (int) ($c->asignatura->modulo_sabatino ?? 1) === 2))
                     : null,
             ];
         }
@@ -133,12 +146,18 @@ class CargaAcademicaBuilderController extends Controller
      * Construye el arreglo de celdas por hora para un día (o para uno de los
      * dos módulos del sábado), a partir del conjunto de cargas ya filtrado.
      *
+     * Cuando hay un grupo en contexto, superpone sobre la disponibilidad del
+     * docente dos señales adicionales del grupo (que un docente libre no deja
+     * ver por sí solo): que el grupo ya tenga clase ahí con otro docente, o
+     * que la hora quede fuera del horario propio del grupo.
+     *
      * @param  array<int, string>  $slots
      * @param  \Illuminate\Support\Collection<int, CargaAcademica>  $cargasDia
      * @param  \Illuminate\Support\Collection<int, DisponibilidadDocente>  $bloquesDia
+     * @param  \Illuminate\Support\Collection<int, CargaAcademica>  $cargasGrupoDia
      * @return array<int, array<string, mixed>>
      */
-    private function construirHoras(array $slots, $cargasDia, $bloquesDia, int $carreraId): array
+    private function construirHoras(array $slots, $cargasDia, $bloquesDia, int $carreraId, ?Grupo $grupo = null, $cargasGrupoDia = null): array
     {
         $horas = [];
 
@@ -172,15 +191,48 @@ class CargaAcademicaBuilderController extends Controller
                 continue;
             }
 
+            // Ya se descartó que el docente tenga clase aquí; si el grupo la
+            // tiene con otro docente, esta hora no sirve aunque el docente
+            // esté libre.
+            $cargaGrupo = $cargasGrupoDia?->first(function (CargaAcademica $c) use ($inicioMin, $finMin) {
+                return Horario::aMinutos($c->hora_inicio) < $finMin
+                    && Horario::aMinutos($c->hora_fin) > $inicioMin;
+            });
+
+            if ($cargaGrupo) {
+                $horas[] = [
+                    'hora' => $hora,
+                    'estado' => 'grupo_ocupado',
+                    'asignatura' => $cargaGrupo->asignatura->nombre,
+                    'docente' => $cargaGrupo->docente->user->name,
+                ];
+
+                continue;
+            }
+
             $dentro = $bloquesDia->contains(function ($b) use ($inicioMin, $finMin) {
                 return $inicioMin >= Horario::aMinutos($b->hora_inicio)
                     && $finMin <= Horario::aMinutos($b->hora_fin);
             });
 
-            $horas[] = [
-                'hora' => $hora,
-                'estado' => $dentro ? 'disponible' : 'fuera_disponibilidad',
-            ];
+            if (! $dentro) {
+                $horas[] = ['hora' => $hora, 'estado' => 'fuera_disponibilidad'];
+
+                continue;
+            }
+
+            if ($grupo && $grupo->hora_inicio && $grupo->hora_fin) {
+                $fueraDelGrupo = $inicioMin < Horario::aMinutos($grupo->hora_inicio)
+                    || $finMin > Horario::aMinutos($grupo->hora_fin);
+
+                if ($fueraDelGrupo) {
+                    $horas[] = ['hora' => $hora, 'estado' => 'grupo_fuera_horario'];
+
+                    continue;
+                }
+            }
+
+            $horas[] = ['hora' => $hora, 'estado' => 'disponible'];
         }
 
         return $horas;
@@ -267,7 +319,11 @@ class CargaAcademicaBuilderController extends Controller
      */
     private function aulasOcupadas(array $datos): array
     {
+        $moduloSabatino = $this->moduloSabatinoDeDatos($datos);
+
         return CargaAcademica::query()
+            ->when($moduloSabatino !== null, fn ($q) => $q->whereHas('asignatura', fn ($q2) => $q2->where('modulo_sabatino', $moduloSabatino)
+                ->when($moduloSabatino !== 2, fn ($q3) => $q3->orWhereNull('modulo_sabatino'))))
             ->where('periodo_escolar_id', $datos['periodo_escolar_id'])
             ->where('dia_semana', $datos['dia_semana'])
             ->where('hora_inicio', '<', $datos['hora_fin'])
@@ -287,8 +343,13 @@ class CargaAcademicaBuilderController extends Controller
      */
     private function gruposOcupados(array $datos): array
     {
+        $moduloSabatino = $this->moduloSabatinoDeDatos($datos);
+
         return DB::table('carga_academica_grupo')
             ->join('cargas_academicas', 'cargas_academicas.id', '=', 'carga_academica_grupo.carga_academica_id')
+            ->when($moduloSabatino !== null, fn ($q) => $q->join('asignaturas', 'asignaturas.id', '=', 'cargas_academicas.asignatura_id')
+                ->where(fn ($q2) => $q2->where('asignaturas.modulo_sabatino', $moduloSabatino)
+                    ->orWhere(fn ($q3) => $moduloSabatino !== 2 ? $q3->whereNull('asignaturas.modulo_sabatino') : $q3->whereRaw('1 = 0'))))
             ->where('cargas_academicas.periodo_escolar_id', $datos['periodo_escolar_id'])
             ->where('cargas_academicas.dia_semana', $datos['dia_semana'])
             ->where('cargas_academicas.hora_inicio', '<', $datos['hora_fin'])
@@ -297,5 +358,23 @@ class CargaAcademicaBuilderController extends Controller
             ->distinct()
             ->pluck('carga_academica_grupo.grupo_id')
             ->all();
+    }
+
+    /**
+     * Módulo sabatino (1 o 2) declarado por la asignatura del request, solo
+     * relevante en sábado (dia_semana === 6); null en cualquier otro caso,
+     * lo que deja el filtro de módulo desactivado.
+     *
+     * @param  array<string, mixed>  $datos
+     */
+    private function moduloSabatinoDeDatos(array $datos): ?int
+    {
+        if ((int) $datos['dia_semana'] !== 6 || ! isset($datos['asignatura_id'])) {
+            return null;
+        }
+
+        $asignatura = Asignatura::find($datos['asignatura_id']);
+
+        return $asignatura ? (int) ($asignatura->modulo_sabatino ?? 1) : null;
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Actions\CargaAcademica;
 
 use App\Enums\EstadoCarga;
+use App\Models\Asignatura;
 use App\Models\CargaAcademica;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -36,6 +37,7 @@ class GuardarCargaAcademicaAction
             try {
                 $carga = CargaAcademica::create([
                     ...$campos,
+                    'modulo_sabatino' => $this->moduloSabatino($datos),
                     'created_by' => $usuarioId,
                     'updated_by' => $usuarioId,
                 ]);
@@ -73,6 +75,7 @@ class GuardarCargaAcademicaAction
                 // Al cambiar el horario, se reinicia la confirmación del docente.
                 $carga->update([
                     ...$campos,
+                    'modulo_sabatino' => $this->moduloSabatino($datos),
                     'estado' => EstadoCarga::Pendiente,
                     'comentario_docente' => null,
                     'updated_by' => $usuarioId,
@@ -142,6 +145,25 @@ class GuardarCargaAcademicaAction
         foreach ($claves as $clave) {
             DB::statement('SELECT pg_advisory_xact_lock(hashtext(?))', [$clave]);
         }
+    }
+
+    /**
+     * Módulo sabatino denormalizado que respalda la exclusion constraint de
+     * Postgres: 0 entre semana (traslape normal), o el módulo (1/2) de la
+     * asignatura en sábado, para que la constraint no choque cargas de
+     * módulos distintos en el mismo bloque de horas.
+     *
+     * @param  array<string, mixed>  $datos
+     */
+    private function moduloSabatino(array $datos): int
+    {
+        if ((int) $datos['dia_semana'] !== 6) {
+            return 0;
+        }
+
+        $asignatura = Asignatura::find($datos['asignatura_id']);
+
+        return $asignatura ? (int) ($asignatura->modulo_sabatino ?? 1) : 1;
     }
 
     private function esViolacionDeExclusion(QueryException $e): bool

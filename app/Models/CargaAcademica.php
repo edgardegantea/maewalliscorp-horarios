@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
     'carrera_id',
     'docente_id',
     'asignatura_id',
+    'modulo_sabatino',
     'aula_id',
     'dia_semana',
     'hora_inicio',

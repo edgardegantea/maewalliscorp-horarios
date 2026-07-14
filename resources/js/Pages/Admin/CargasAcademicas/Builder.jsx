@@ -74,11 +74,11 @@ export default function Builder({ periodo, carrera, docentes, asignaturas, grupo
         setCargando(true);
         window.axios
             .get(route('admin.cargas.grid-data'), {
-                params: { periodo: periodo.id, carrera: carrera.id, docente: docenteId },
+                params: { periodo: periodo.id, carrera: carrera.id, docente: docenteId, grupo: grupoIdUrl || undefined },
             })
             .then((res) => setDias(res.data.dias))
             .finally(() => setCargando(false));
-    }, [docenteId, periodo.id, carrera.id]);
+    }, [docenteId, periodo.id, carrera.id, grupoIdUrl]);
 
     useEffect(() => {
         cargarGrid();
@@ -184,6 +184,12 @@ export default function Builder({ periodo, carrera, docentes, asignaturas, grupo
                             <Leyenda clase="bg-indigo-100 dark:bg-indigo-500/20" texto="Esta carrera" />
                             <Leyenda clase="bg-amber-100 dark:bg-amber-500/20" texto="Ocupado (otra carrera)" />
                             <Leyenda clase="bg-slate-100 dark:bg-slate-800" texto="Fuera de disponibilidad" />
+                            {grupoVistaPrevia && (
+                                <>
+                                    <Leyenda clase="bg-rose-100 dark:bg-rose-500/20" texto="Grupo ocupado (otro docente)" />
+                                    <Leyenda clase="bg-slate-100 dark:bg-slate-800" texto="Fuera del horario del grupo" />
+                                </>
+                            )}
                         </div>
                     </div>
                 </Card>
