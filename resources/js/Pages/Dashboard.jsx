@@ -2,6 +2,7 @@ import Icon from '@/Components/Icon';
 import PageHeader from '@/Components/ui/PageHeader';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, usePage } from '@inertiajs/react';
+import { useState } from 'react';
 
 const accesosAdmin = [
     { name: 'admin.cargas.index', titulo: 'Cargas académicas', desc: 'Arma y publica los horarios por periodo y carrera.', icon: 'clipboard' },
@@ -48,38 +49,6 @@ export default function Dashboard({ alertas }) {
                     }
                 />
 
-                {alertas && (alertas.grupos_sin_clases.length > 0 || alertas.docentes_sin_disponibilidad.length > 0) && (
-                    <div className="rounded-xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-500/20 dark:bg-amber-500/10">
-                        <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-400">
-                            Pendientes en {alertas.periodo}
-                        </h3>
-                        <div className="mt-3 grid gap-4 sm:grid-cols-2">
-                            {alertas.grupos_sin_clases.length > 0 && (
-                                <div>
-                                    <p className="text-sm font-medium text-amber-800 dark:text-amber-400">
-                                        {alertas.grupos_sin_clases.length} grupo(s) sin ninguna clase asignada
-                                    </p>
-                                    <p className="mt-1 text-xs text-amber-700 dark:text-amber-500/80">
-                                        {alertas.grupos_sin_clases.slice(0, 6).join(', ')}
-                                        {alertas.grupos_sin_clases.length > 6 && '…'}
-                                    </p>
-                                </div>
-                            )}
-                            {alertas.docentes_sin_disponibilidad.length > 0 && (
-                                <div>
-                                    <p className="text-sm font-medium text-amber-800 dark:text-amber-400">
-                                        {alertas.docentes_sin_disponibilidad.length} docente(s) sin disponibilidad registrada
-                                    </p>
-                                    <p className="mt-1 text-xs text-amber-700 dark:text-amber-500/80">
-                                        {alertas.docentes_sin_disponibilidad.slice(0, 6).join(', ')}
-                                        {alertas.docentes_sin_disponibilidad.length > 6 && '…'}
-                                    </p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                )}
-
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {accesos.map((a) => (
                         <Link
@@ -97,7 +66,81 @@ export default function Dashboard({ alertas }) {
                         </Link>
                     ))}
                 </div>
+
+                {alertas && (alertas.grupos_sin_clases.length > 0 || alertas.docentes_sin_disponibilidad.length > 0) && (
+                    <PanelPendientes alertas={alertas} />
+                )}
             </div>
         </AuthenticatedLayout>
+    );
+}
+
+// Resumen de pendientes: arranca colapsado a una fila por categoría (solo el
+// conteo) para no empujar el resto del contenido; cada categoría se expande
+// por separado en una lista con scroll propio, así el bloque nunca crece sin
+// límite ni corta texto a la mitad con "…".
+function PanelPendientes({ alertas }) {
+    const categorias = [
+        {
+            clave: 'grupos',
+            icon: 'user',
+            etiqueta: 'sin ninguna clase asignada',
+            items: alertas.grupos_sin_clases,
+        },
+        {
+            clave: 'docentes',
+            icon: 'users',
+            etiqueta: 'sin disponibilidad registrada',
+            items: alertas.docentes_sin_disponibilidad,
+        },
+    ].filter((c) => c.items.length > 0);
+
+    return (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-500/20 dark:bg-amber-500/10">
+            <div className="flex items-center gap-2 border-b border-amber-200/70 px-5 py-3 dark:border-amber-500/20">
+                <Icon name="clock" className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-400">
+                    Pendientes en {alertas.periodo}
+                </h3>
+            </div>
+            <div className="divide-y divide-amber-200/70 dark:divide-amber-500/20">
+                {categorias.map((c) => (
+                    <CategoriaPendiente key={c.clave} {...c} />
+                ))}
+            </div>
+        </div>
+    );
+}
+
+function CategoriaPendiente({ icon, etiqueta, items }) {
+    const [abierto, setAbierto] = useState(false);
+
+    return (
+        <div>
+            <button
+                type="button"
+                onClick={() => setAbierto((v) => !v)}
+                className="flex w-full items-center justify-between gap-3 px-5 py-3 text-left transition hover:bg-amber-100/60 dark:hover:bg-amber-500/10"
+                aria-expanded={abierto}
+            >
+                <span className="flex items-center gap-2 text-sm font-medium text-amber-800 dark:text-amber-400">
+                    <Icon name={icon} className="h-4 w-4 shrink-0" />
+                    {items.length} {items.length === 1 ? 'elemento' : 'elementos'} {etiqueta}
+                </span>
+                <Icon
+                    name="chevronDown"
+                    className={`h-4 w-4 shrink-0 text-amber-600 transition-transform dark:text-amber-400 ${abierto ? 'rotate-180' : ''}`}
+                />
+            </button>
+            {abierto && (
+                <ul className="max-h-48 space-y-1 overflow-y-auto px-5 pb-4 text-xs text-amber-700 dark:text-amber-500/80">
+                    {items.map((item) => (
+                        <li key={item} className="truncate">
+                            {item}
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </div>
     );
 }
