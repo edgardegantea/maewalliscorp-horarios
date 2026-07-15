@@ -373,6 +373,25 @@ it('permite asignar clase el sábado a un grupo sabatino terminado en F', functi
     expect($carga->grupos()->pluck('grupos.id')->all())->toBe([$grupoSabatino->id]);
 });
 
+it('permite asignar clase el sábado a un grupo terminado en B', function () {
+    $e = escenario();
+    $grupoB = Grupo::create(['carrera_id' => $e['carrera']->id, 'periodo_escolar_id' => $e['periodo']->id, 'nombre' => '1B', 'matricula' => 30]);
+    DisponibilidadDocente::create([
+        'docente_id' => $e['docente']->id,
+        'periodo_escolar_id' => $e['periodo']->id,
+        'dia_semana' => 6,
+        'hora_inicio' => '08:00',
+        'hora_fin' => '14:00',
+    ]);
+
+    $carga = app(GuardarCargaAcademicaAction::class)->ejecutar(
+        datosCarga($e, ['grupo_ids' => [$grupoB->id], 'dia_semana' => 6, 'hora_inicio' => '08:00', 'hora_fin' => '09:00']),
+        $e['admin']->id,
+    );
+
+    expect($carga->grupos()->pluck('grupos.id')->all())->toBe([$grupoB->id]);
+});
+
 it('no aplica la restricción de grupo sabatino en días distintos al sábado', function () {
     $e = escenario();
 

@@ -143,10 +143,13 @@ export default function GrupoHorario({ grupo, grupos, slots, dias }) {
     const slotsVisibles = primerIdx === -1 ? slots : slots.slice(primerIdx, ultimoIdx + 1);
     const offset = primerIdx === -1 ? 0 : primerIdx;
 
-    // Los grupos sabatinos (terminados en "F") pueden combinar días entre
-    // semana y sábado con módulos, así que ahí solo se muestran los días con
-    // clase asignada. Los grupos regulares siempre muestran Lunes a Viernes
-    // (su semana normal), y sábado/domingo solo si tienen algo asignado.
+    // Los grupos dedicados a sábado (terminados en "F") pueden combinar días
+    // entre semana y sábado con módulos, así que ahí solo se muestran los días
+    // con clase asignada. Los grupos regulares (incluidos los "B", que ahora
+    // también pueden tener alguna clase sabatina además de su semana normal)
+    // siempre muestran Lunes a Viernes, y sábado/domingo solo si tienen algo
+    // asignado — el filtro de abajo ya cubre ese caso sin necesidad de tratar
+    // a los "B" como sabatinos "puros".
     const esSabatino = /f$/i.test(grupo.nombre.trim());
     const diasInfo = DIAS.map((d) => ({
         ...d,

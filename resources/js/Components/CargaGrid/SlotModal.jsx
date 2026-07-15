@@ -326,11 +326,11 @@ export default function SlotModal({
                         </label>
                         <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">
                             Selecciona uno o varios grupos si la clase se imparte a una combinación de grupos.
-                            {data.dia_semana === 6 && ' Los sábados solo se puede asignar a grupos sabatinos (terminados en "F", p. ej. 1F).'}
+                            {data.dia_semana === 6 && ' Los sábados solo se puede asignar a grupos sabatinos (terminados en "F" o "B", p. ej. 1F o 1B).'}
                         </p>
                         <div className="mt-1 max-h-40 space-y-1 overflow-y-auto rounded-md border border-slate-300 p-2 dark:border-slate-700">
                             {grupos.map((g) => {
-                                const noEsSabatino = data.dia_semana === 6 && !/f$/i.test(g.nombre.trim());
+                                const noEsSabatino = data.dia_semana === 6 && !/[fb]$/i.test(g.nombre.trim());
                                 const ocupado = (ocupados.grupos.includes(g.id) && !data.grupo_ids.includes(g.id)) || noEsSabatino;
                                 const marcado = data.grupo_ids.includes(g.id);
                                 return (

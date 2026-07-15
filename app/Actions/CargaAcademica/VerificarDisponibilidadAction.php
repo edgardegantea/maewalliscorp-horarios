@@ -161,17 +161,17 @@ class VerificarDisponibilidadAction
 
     /**
      * Los sábados solo se puede impartir clase a grupos sabatinos, identificados
-     * por terminar su nombre en la letra "F" (1F, 2F, 3F, etc.).
+     * por terminar su nombre en la letra "F" o "B" (1F, 2F, 1B, 2B, etc.).
      */
     private function noEsGrupoSabatino(int $grupoId): ?string
     {
         $grupo = Grupo::find($grupoId);
 
-        if (! $grupo || preg_match('/f$/i', trim($grupo->nombre)) === 1) {
+        if (! $grupo || preg_match('/[fb]$/i', trim($grupo->nombre)) === 1) {
             return null;
         }
 
-        return "El grupo \"{$grupo->nombre}\" no es un grupo sabatino (debe terminar en \"F\", p. ej. 1F); no se le puede asignar clase en sábado.";
+        return "El grupo \"{$grupo->nombre}\" no es un grupo sabatino (debe terminar en \"F\" o \"B\", p. ej. 1F o 1B); no se le puede asignar clase en sábado.";
     }
 
     /**

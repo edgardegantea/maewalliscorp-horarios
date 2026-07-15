@@ -172,6 +172,7 @@ class ConcentradoGeneralExport implements FromView, WithColumnWidths, WithTitle
                 'filas' => $filas,
                 'color' => $color,
                 'colorClaro' => $this->aclarar($color, 0.85),
+                'colorEncabezadoFilas' => $this->aclarar($color, 0.6),
             ];
         }
 

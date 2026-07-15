@@ -93,7 +93,7 @@ export default function Form({ data, setData, errors, processing, onSubmit, canc
                     <option value="2">Módulo 2</option>
                 </SelectInput>
                 <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                    Para grupos que tienen clase el sábado (terminados en "F"), cuyo semestre se divide en dos
+                    Para grupos que tienen clase el sábado (terminados en "F" o "B"), cuyo semestre se divide en dos
                     módulos de hasta 3 materias cada uno. Indica en cuál se imparte esta asignatura.
                 </p>
                 <InputError message={errors.modulo_sabatino} className="mt-2" />

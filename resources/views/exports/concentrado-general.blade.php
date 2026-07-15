@@ -7,6 +7,7 @@
             @php
                 $estiloEncabezado = "background-color:#{$bloque['color']};color:#FFFFFF;font-weight:bold;";
                 $estiloFila = "background-color:#{$bloque['colorClaro']};";
+                $estiloEncabezadoFilas = "background-color:#{$bloque['colorEncabezadoFilas']};color:#FFFFFF;font-weight:bold;";
             @endphp
             <tr>
                 <th style="{{ $estiloEncabezado }}">CARRERA:</th>
@@ -22,11 +23,11 @@
                 <th colspan="{{ count($dias) - 3 }}" style="{{ $estiloFila }}">MODALIDAD: {{ $bloque['modalidad'] }}</th>
             </tr>
             <tr>
-                <th style="{{ $estiloFila }}">CLAVE ASIGNATURA</th>
-                <th style="{{ $estiloFila }}">ASIGNATURA</th>
-                <th style="{{ $estiloFila }}">DOCENTE</th>
+                <th style="{{ $estiloEncabezadoFilas }}">CLAVE ASIGNATURA</th>
+                <th style="{{ $estiloEncabezadoFilas }}">ASIGNATURA</th>
+                <th style="{{ $estiloEncabezadoFilas }}">DOCENTE</th>
                 @foreach ($dias as $nombre)
-                    <th style="{{ $estiloFila }}">{{ $nombre }}</th>
+                    <th style="{{ $estiloEncabezadoFilas }}">{{ $nombre }}</th>
                 @endforeach
             </tr>
             @foreach ($bloque['filas'] as $fila)

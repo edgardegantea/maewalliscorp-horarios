@@ -140,7 +140,7 @@ export default function Form({ data, setData, errors, processing, onSubmit, canc
                     onChange={(e) => setData('fecha_corte_modulo', e.target.value)}
                 />
                 <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                    Para grupos que tienen clase el sábado (terminados en "F", p. ej. 1F): fecha en la que
+                    Para grupos que tienen clase el sábado (terminados en "F" o "B", p. ej. 1F o 1B): fecha en la que
                     termina el módulo 1 (primera mitad del semestre, hasta 3 materias) y empieza el módulo 2
                     (segunda mitad, el resto de las materias).
                 </p>
