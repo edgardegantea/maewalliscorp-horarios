@@ -1,6 +1,3 @@
-@php
-    $dias = [1 => 'LUNES', 2 => 'MARTES', 3 => 'MIÉRCOLES', 4 => 'JUEVES', 5 => 'VIERNES', 6 => 'SÁBADO', 7 => 'DOMINGO'];
-@endphp
 <table>
     <tbody>
         @foreach ($bloques as $bloque)
@@ -14,13 +11,9 @@
                 <td colspan="{{ count($dias) + 2 }}" style="{{ $estiloEncabezado }}">{{ $bloque['carrera'] }}</td>
             </tr>
             <tr>
-                <th style="{{ $estiloFila }}">SEMESTRE:</th>
-                <td style="{{ $estiloFila }}">{{ $bloque['semestre'] }}</td>
-                <td style="{{ $estiloFila }}"></td>
-                <th style="{{ $estiloFila }}">GRUPO:</th>
-                <td style="{{ $estiloFila }}">{{ $bloque['grupo'] }}</td>
-                <td style="{{ $estiloFila }}"></td>
-                <th colspan="{{ count($dias) - 3 }}" style="{{ $estiloFila }}">MODALIDAD: {{ $bloque['modalidad'] }}</th>
+                <th colspan="2" style="{{ $estiloFila }}">SEMESTRE: {{ $bloque['semestre'] }}</th>
+                <th colspan="2" style="{{ $estiloFila }}">GRUPO: {{ $bloque['grupo'] }}</th>
+                <th colspan="{{ count($dias) - 1 }}" style="{{ $estiloFila }}">MODALIDAD: {{ $bloque['modalidad'] }}</th>
             </tr>
             <tr>
                 <th style="{{ $estiloEncabezadoFilas }}">CLAVE ASIGNATURA</th>

@@ -231,6 +231,15 @@ export default function Index({ periodos, carreras, asignaturas, docentes, perio
                                     Concentrado general
                                 </a>
                             )}
+                            {periodo && route().has('admin.concentrado.por-campus') && (
+                                <a
+                                    href={route('admin.concentrado.por-campus', { periodo })}
+                                    className={`${secondaryLinkClasses} gap-1.5`}
+                                >
+                                    <Icon name="download" className="h-4 w-4" />
+                                    Concentrado por campus
+                                </a>
+                            )}
                             {puedeCrear && route().has('admin.concentrado.export') && (
                                 <a
                                     href={route('admin.concentrado.export', { periodo, carrera })}

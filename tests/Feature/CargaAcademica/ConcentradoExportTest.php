@@ -1,6 +1,7 @@
 <?php
 
 use App\Exports\ConcentradoGeneralExport;
+use App\Exports\ConcentradoPorCampusExport;
 use App\Mail\ConcentradoDescargado;
 use App\Models\Asignatura;
 use App\Models\Aula;
@@ -153,4 +154,85 @@ it('no fusiona en el concentrado bloques del mismo día en aulas distintas', fun
     $bloques = (new ConcentradoGeneralExport($periodo))->view()->getData()['bloques'];
 
     expect($bloques[0]['filas'][0]['dias'][1])->toBe("A-101 09:00 - 10:00\nA-102 10:00 - 11:00");
+});
+
+it('omite la columna de domingo en el concentrado cuando nadie tiene clase ese día', function () {
+    $periodo = PeriodoEscolar::create(['nombre' => 'P', 'fecha_inicio' => '2026-01-01', 'fecha_fin' => '2026-06-30', 'activo' => true]);
+    $carrera = Carrera::create(['nombre' => 'Ingeniería en Sistemas', 'clave' => 'IS']);
+    $asignatura = Asignatura::create(['carrera_id' => $carrera->id, 'nombre' => 'Programación I', 'clave' => 'PROG1']);
+    $grupo = Grupo::create(['carrera_id' => $carrera->id, 'periodo_escolar_id' => $periodo->id, 'nombre' => '1A', 'semestre' => 1, 'matricula' => 30, 'modalidad' => 'Escolarizado']);
+    $aula = Aula::create(['nombre' => 'A-101']);
+    $docenteUser = User::factory()->docente()->create(['name' => 'Juan Pérez']);
+    $docente = Docente::create(['user_id' => $docenteUser->id]);
+
+    $carga = CargaAcademica::create([
+        'periodo_escolar_id' => $periodo->id, 'carrera_id' => $carrera->id, 'docente_id' => $docente->id,
+        'asignatura_id' => $asignatura->id, 'aula_id' => $aula->id,
+        'dia_semana' => 1, 'hora_inicio' => '09:00', 'hora_fin' => '10:00',
+    ]);
+    $carga->grupos()->attach($grupo->id);
+
+    $dias = (new ConcentradoGeneralExport($periodo))->view()->getData()['dias'];
+
+    expect($dias)->toHaveCount(6)->not->toHaveKey(7);
+});
+
+it('incluye la columna de domingo en el concentrado cuando algún grupo tiene clase ese día', function () {
+    $periodo = PeriodoEscolar::create(['nombre' => 'P', 'fecha_inicio' => '2026-01-01', 'fecha_fin' => '2026-06-30', 'activo' => true]);
+    $carrera = Carrera::create(['nombre' => 'Ingeniería en Sistemas', 'clave' => 'IS']);
+    $asignatura = Asignatura::create(['carrera_id' => $carrera->id, 'nombre' => 'Programación I', 'clave' => 'PROG1']);
+    $grupo = Grupo::create(['carrera_id' => $carrera->id, 'periodo_escolar_id' => $periodo->id, 'nombre' => '1A', 'semestre' => 1, 'matricula' => 30, 'modalidad' => 'Escolarizado']);
+    $aula = Aula::create(['nombre' => 'A-101']);
+    $docenteUser = User::factory()->docente()->create(['name' => 'Juan Pérez']);
+    $docente = Docente::create(['user_id' => $docenteUser->id]);
+
+    $carga = CargaAcademica::create([
+        'periodo_escolar_id' => $periodo->id, 'carrera_id' => $carrera->id, 'docente_id' => $docente->id,
+        'asignatura_id' => $asignatura->id, 'aula_id' => $aula->id,
+        'dia_semana' => 7, 'hora_inicio' => '09:00', 'hora_fin' => '10:00',
+    ]);
+    $carga->grupos()->attach($grupo->id);
+
+    $dias = (new ConcentradoGeneralExport($periodo))->view()->getData()['dias'];
+
+    expect($dias)->toHaveCount(7)->toHaveKey(7, 'DOMINGO');
+});
+
+it('el concentrado por campus separa las cargas en hojas ESCOLARIZADO, SABATINO y VEGA DE ALATORRE según el sufijo del grupo', function () {
+    $periodo = PeriodoEscolar::create(['nombre' => 'P', 'fecha_inicio' => '2026-01-01', 'fecha_fin' => '2026-06-30', 'activo' => true]);
+    $carrera = Carrera::create(['nombre' => 'Ingeniería en Sistemas', 'clave' => 'IS']);
+    $asignatura = Asignatura::create(['carrera_id' => $carrera->id, 'nombre' => 'Programación I', 'clave' => 'PROG1']);
+    $docenteUser = User::factory()->docente()->create(['name' => 'Juan Pérez']);
+    $docente = Docente::create(['user_id' => $docenteUser->id]);
+
+    $grupoA = Grupo::create(['carrera_id' => $carrera->id, 'periodo_escolar_id' => $periodo->id, 'nombre' => '1A', 'semestre' => 1, 'matricula' => 30, 'modalidad' => 'Escolarizado']);
+    $grupoB = Grupo::create(['carrera_id' => $carrera->id, 'periodo_escolar_id' => $periodo->id, 'nombre' => '1B', 'semestre' => 1, 'matricula' => 30, 'modalidad' => 'Escolarizado']);
+    $grupoF = Grupo::create(['carrera_id' => $carrera->id, 'periodo_escolar_id' => $periodo->id, 'nombre' => '1F', 'semestre' => 1, 'matricula' => 30, 'modalidad' => 'Escolarizado']);
+
+    // Horas distintas (además de aulas distintas) para que el mismo docente
+    // no choque con la exclusion constraint de Postgres al tener una carga
+    // por cada grupo el mismo día.
+    foreach ([$grupoA, $grupoB, $grupoF] as $indice => $grupo) {
+        $aula = Aula::create(['nombre' => "A-10{$indice}"]);
+        $horaInicio = sprintf('%02d:00', 9 + $indice);
+        $horaFin = sprintf('%02d:00', 10 + $indice);
+
+        $carga = CargaAcademica::create([
+            'periodo_escolar_id' => $periodo->id, 'carrera_id' => $carrera->id, 'docente_id' => $docente->id,
+            'asignatura_id' => $asignatura->id, 'aula_id' => $aula->id,
+            'dia_semana' => 1, 'hora_inicio' => $horaInicio, 'hora_fin' => $horaFin,
+        ]);
+        $carga->grupos()->attach($grupo->id);
+    }
+
+    $hojas = (new ConcentradoPorCampusExport($periodo))->sheets();
+
+    expect($hojas)->toHaveCount(3);
+
+    $porTitulo = collect($hojas)->keyBy(fn (ConcentradoGeneralExport $h) => $h->title());
+
+    expect($porTitulo->get('ESCOLARIZADO')->view()->getData()['bloques'])->toHaveCount(1)
+        ->and($porTitulo->get('ESCOLARIZADO')->view()->getData()['bloques'][0]['grupo'])->toBe('1A')
+        ->and($porTitulo->get('SABATINO')->view()->getData()['bloques'][0]['grupo'])->toBe('1B')
+        ->and($porTitulo->get('VEGA DE ALATORRE')->view()->getData()['bloques'][0]['grupo'])->toBe('1F');
 });

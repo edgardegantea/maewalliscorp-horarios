@@ -1,0 +1,1 @@
+import{d as e,p as t,s as n}from"./app-B-n3JWAk.js";var r=t(e(),1);function i(e,t,i=`q`,a=300){let[o,s]=(0,r.useState)(t[i]??``),c=(0,r.useRef)(!0);return(0,r.useEffect)(()=>{if(c.current){c.current=!1;return}let r=setTimeout(()=>{n.get(route(e),{...t,[i]:o||void 0},{preserveState:!0,preserveScroll:!0,replace:!0})},a);return()=>clearTimeout(r)},[o]),[o,s]}export{i as t};

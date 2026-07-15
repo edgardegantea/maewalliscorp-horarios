@@ -42,6 +42,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('aulas-importar', [AulaController::class, 'import'])->name('aulas.import');
 
         Route::get('concentrado/general', [ConcentradoExportController::class, 'general'])->name('concentrado.general');
+        Route::get('concentrado/por-campus', [ConcentradoExportController::class, 'porCampus'])->name('concentrado.por-campus');
 
         Route::get('auditoria', [AuditoriaController::class, 'index'])->name('auditoria.index');
 

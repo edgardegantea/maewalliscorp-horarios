@@ -195,6 +195,15 @@ export default function GrupoHorario({ grupo, grupos, slots, dias }) {
                                         Concentrado general
                                     </a>
                                 )}
+                                {route().has('admin.concentrado.por-campus') && (
+                                    <a
+                                        href={route('admin.concentrado.por-campus', { periodo: grupo.periodo_escolar_id })}
+                                        className={`${secondaryLinkClasses} gap-1.5`}
+                                    >
+                                        <Icon name="download" className="h-4 w-4" />
+                                        Concentrado por campus
+                                    </a>
+                                )}
                                 {route().has('admin.concentrado.export') && (
                                     <a
                                         href={route('admin.concentrado.export', { periodo: grupo.periodo_escolar_id, carrera: grupo.carrera_id })}

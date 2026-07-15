@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Exports\ConcentradoGeneralExport;
 use App\Exports\ConcentradoHorarioExport;
+use App\Exports\ConcentradoPorCampusExport;
 use App\Http\Controllers\Concerns\ScopedByCarrera;
 use App\Http\Controllers\Controller;
 use App\Mail\ConcentradoDescargado;
@@ -57,6 +58,25 @@ class ConcentradoExportController extends Controller
         $nombre = Str::slug("concentrado-general-{$periodo->nombre}").'.xlsx';
 
         return Excel::download(new ConcentradoGeneralExport($periodo), $nombre);
+    }
+
+    /**
+     * Segunda versión del concentrado: un libro con una hoja por tipo de
+     * grupo (ESCOLARIZADO, SABATINO, VEGA DE ALATORRE), en vez de todo junto.
+     */
+    public function porCampus(Request $request): BinaryFileResponse
+    {
+        $datos = $request->validate([
+            'periodo' => ['required', 'exists:periodos_escolares,id'],
+        ]);
+
+        $periodo = PeriodoEscolar::findOrFail($datos['periodo']);
+
+        $this->notificarDescarga($request, $periodo, null);
+
+        $nombre = Str::slug("concentrado-por-campus-{$periodo->nombre}").'.xlsx';
+
+        return Excel::download(new ConcentradoPorCampusExport($periodo), $nombre);
     }
 
     /**
