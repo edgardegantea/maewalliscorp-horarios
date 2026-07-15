@@ -7,7 +7,7 @@
             @php
                 $estiloEncabezado = "background-color:#{$bloque['color']};color:#FFFFFF;font-weight:bold;";
                 $estiloFila = "background-color:#{$bloque['colorClaro']};";
-                $estiloEncabezadoFilas = "background-color:#{$bloque['colorEncabezadoFilas']};color:#FFFFFF;font-weight:bold;";
+                $estiloEncabezadoFilas = "background-color:#{$bloque['colorEncabezadoFilas']};color:#000000;font-weight:bold;";
             @endphp
             <tr>
                 <th style="{{ $estiloEncabezado }}">CARRERA:</th>
