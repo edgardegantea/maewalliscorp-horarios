@@ -29,7 +29,7 @@ class GuardarCargaAcademicaAction
     {
         return DB::transaction(function () use ($datos, $usuarioId) {
             $grupoIds = array_map('intval', $datos['grupo_ids']);
-            $campos = collect($datos)->except('grupo_ids')->all();
+            $campos = collect($datos)->except(['grupo_ids', 'modulo_sabatino'])->all();
 
             $this->bloquear($datos, $grupoIds);
             $this->verificarOFallar($datos, $grupoIds, null);
@@ -66,7 +66,7 @@ class GuardarCargaAcademicaAction
     {
         return DB::transaction(function () use ($carga, $datos, $usuarioId) {
             $grupoIds = array_map('intval', $datos['grupo_ids']);
-            $campos = collect($datos)->except('grupo_ids')->all();
+            $campos = collect($datos)->except(['grupo_ids', 'modulo_sabatino'])->all();
 
             $this->bloquear($datos, $grupoIds);
             $this->verificarOFallar($datos, $grupoIds, $carga->id);
@@ -111,6 +111,7 @@ class GuardarCargaAcademicaAction
             $grupoIds,
             ignorarCargaId: $ignorarCargaId,
             asignaturaId: (int) $datos['asignatura_id'],
+            moduloSabatino: isset($datos['modulo_sabatino']) ? (int) $datos['modulo_sabatino'] : null,
         );
 
         if (! $resultado->esValido()) {
@@ -149,9 +150,11 @@ class GuardarCargaAcademicaAction
 
     /**
      * Módulo sabatino denormalizado que respalda la exclusion constraint de
-     * Postgres: 0 entre semana (traslape normal), o el módulo (1/2) de la
-     * asignatura en sábado, para que la constraint no choque cargas de
-     * módulos distintos en el mismo bloque de horas.
+     * Postgres: 0 entre semana (traslape normal), o el módulo (1/2) en sábado,
+     * para que la constraint no choque cargas de módulos distintos en el
+     * mismo bloque de horas. El módulo real es el de la columna del grid que
+     * se seleccionó (viene explícito en $datos); si no se indicó, se usa el
+     * de la asignatura como respaldo.
      *
      * @param  array<string, mixed>  $datos
      */
@@ -159,6 +162,10 @@ class GuardarCargaAcademicaAction
     {
         if ((int) $datos['dia_semana'] !== 6) {
             return 0;
+        }
+
+        if (isset($datos['modulo_sabatino'])) {
+            return (int) $datos['modulo_sabatino'];
         }
 
         $asignatura = Asignatura::find($datos['asignatura_id']);

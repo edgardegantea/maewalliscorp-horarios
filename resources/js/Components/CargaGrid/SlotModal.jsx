@@ -64,6 +64,10 @@ export default function SlotModal({
         dia_semana: seleccion?.dia_semana ?? '',
         hora_inicio: seleccion?.hora_inicio ?? '',
         hora_fin: seleccion?.hora_fin ?? '',
+        // Módulo de la columna del grid que se seleccionó (1 o 2, solo
+        // sábado): es la fuente real de a qué módulo pertenece la carga, no
+        // el modulo_sabatino que declare la asignatura elegida.
+        modulo_sabatino: seleccion?.modulo_sabatino ?? null,
     });
 
     const [ocupados, setOcupados] = useState({ aulas: [], grupos: [] });
@@ -86,6 +90,7 @@ export default function SlotModal({
                 asignatura_id: cargaExistente?.asignatura_id ?? prellenado?.asignatura_id ?? '',
                 grupo_ids: cargaExistente?.grupo_ids ?? prellenado?.grupo_ids ?? [],
                 aula_id: cargaExistente?.aula_id ?? prellenado?.aula_id ?? '',
+                modulo_sabatino: cargaExistente?.modulo_sabatino ?? seleccion.modulo_sabatino ?? null,
             }));
             setOcupados({ aulas: [], grupos: [] });
             setVerificacion(null);
@@ -137,6 +142,7 @@ export default function SlotModal({
                     aula_id: data.aula_id || null,
                     grupo_ids: data.grupo_ids,
                     asignatura_id: data.asignatura_id || null,
+                    modulo_sabatino: data.modulo_sabatino || null,
                     ignorar_carga_id: cargaExistente?.id ?? null,
                 })
                 .then((res) => {

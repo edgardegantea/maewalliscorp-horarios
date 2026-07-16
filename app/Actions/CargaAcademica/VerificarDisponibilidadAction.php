@@ -36,6 +36,7 @@ class VerificarDisponibilidadAction
         array $grupoIds = [],
         ?int $ignorarCargaId = null,
         ?int $asignaturaId = null,
+        ?int $moduloSabatino = null,
     ): ResultadoVerificacion {
         $conflictos = [];
 
@@ -43,7 +44,10 @@ class VerificarDisponibilidadAction
         // aunque compartan la misma rejilla de horas en la UI; un mismo
         // docente/aula/grupo puede tener una clase en cada módulo dentro del
         // "mismo horario" (misma hora_inicio/hora_fin) sin que sea un choque real.
-        $moduloSabatino = $diaSemana === 6 ? $this->moduloDeAsignatura($asignaturaId) : null;
+        // El módulo real de la carga es el de la columna del grid que el usuario
+        // seleccionó (parámetro explícito); si no se indica, se usa el de la
+        // asignatura elegida como respaldo.
+        $moduloSabatino = $diaSemana === 6 ? ($moduloSabatino ?? $this->moduloDeAsignatura($asignaturaId)) : null;
 
         $conflictoDocente = $this->buscarConflicto('docente_id', $docenteId, $periodoEscolarId, $diaSemana, $horaInicio, $horaFin, $ignorarCargaId, $moduloSabatino);
         if ($conflictoDocente) {
@@ -105,9 +109,7 @@ class VerificarDisponibilidadAction
     ): bool {
         return DB::table('carga_academica_grupo')
             ->join('cargas_academicas', 'cargas_academicas.id', '=', 'carga_academica_grupo.carga_academica_id')
-            ->when($moduloSabatino !== null, fn ($q) => $q->join('asignaturas', 'asignaturas.id', '=', 'cargas_academicas.asignatura_id')
-                ->where(fn ($q2) => $q2->where('asignaturas.modulo_sabatino', $moduloSabatino)
-                    ->orWhere(fn ($q3) => $moduloSabatino !== 2 ? $q3->whereNull('asignaturas.modulo_sabatino') : $q3->whereRaw('1 = 0'))))
+            ->when($moduloSabatino !== null, fn ($q) => $q->where('cargas_academicas.modulo_sabatino', $moduloSabatino))
             ->where('carga_academica_grupo.grupo_id', $grupoId)
             ->where('cargas_academicas.periodo_escolar_id', $periodoEscolarId)
             ->where('cargas_academicas.dia_semana', $diaSemana)
@@ -335,8 +337,7 @@ class VerificarDisponibilidadAction
         ?int $moduloSabatino = null,
     ): bool {
         return CargaAcademica::query()
-            ->when($moduloSabatino !== null, fn ($q) => $q->whereHas('asignatura', fn ($q2) => $q2->where('modulo_sabatino', $moduloSabatino)
-                ->when($moduloSabatino !== 2, fn ($q3) => $q3->orWhereNull('modulo_sabatino'))))
+            ->when($moduloSabatino !== null, fn ($q) => $q->where('modulo_sabatino', $moduloSabatino))
             ->where('periodo_escolar_id', $periodoEscolarId)
             ->where('dia_semana', $diaSemana)
             ->where($columna, $valor)

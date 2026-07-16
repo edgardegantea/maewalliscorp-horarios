@@ -158,10 +158,10 @@ class CargaAcademicaController extends Controller
             $dias[] = [
                 'dia_semana' => $dia,
                 'horas' => $dia === 6
-                    ? $this->construirHorasGrupo($slots, $cargasDia->filter(fn (CargaAcademica $c) => (int) ($c->asignatura->modulo_sabatino ?? 1) !== 2))
+                    ? $this->construirHorasGrupo($slots, $cargasDia->filter(fn (CargaAcademica $c) => (int) $c->modulo_sabatino !== 2))
                     : $this->construirHorasGrupo($slots, $cargasDia),
                 'horas_modulo2' => $dia === 6
-                    ? $this->construirHorasGrupo($slots, $cargasDia->filter(fn (CargaAcademica $c) => (int) ($c->asignatura->modulo_sabatino ?? 1) === 2))
+                    ? $this->construirHorasGrupo($slots, $cargasDia->filter(fn (CargaAcademica $c) => (int) $c->modulo_sabatino === 2))
                     : null,
             ];
         }

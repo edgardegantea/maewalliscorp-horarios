@@ -129,12 +129,16 @@ class CargaAcademicaBuilderController extends Controller
                 ])->values(),
                 // El sábado se divide visualmente en dos columnas (módulo 1 y
                 // módulo 2) porque un mismo docente puede tener, en el mismo
-                // horario, una asignatura de cada módulo (distintas semanas).
+                // horario, una carga de cada módulo (distintas semanas). Se
+                // agrupa por el módulo propio de la carga (columna del grid en
+                // la que se guardó), no por el de su asignatura: una carga
+                // puede colocarse deliberadamente en la columna contraria a la
+                // clasificación por defecto de su asignatura.
                 'horas' => $dia === 6
-                    ? $this->construirHoras($slots, $cargasDia->filter(fn (CargaAcademica $c) => (int) ($c->asignatura->modulo_sabatino ?? 1) !== 2), $bloquesDia, $carreraId, $grupo, $cargasGrupoDia->filter(fn (CargaAcademica $c) => (int) ($c->asignatura->modulo_sabatino ?? 1) !== 2))
+                    ? $this->construirHoras($slots, $cargasDia->filter(fn (CargaAcademica $c) => (int) $c->modulo_sabatino !== 2), $bloquesDia, $carreraId, $grupo, $cargasGrupoDia->filter(fn (CargaAcademica $c) => (int) $c->modulo_sabatino !== 2))
                     : $this->construirHoras($slots, $cargasDia, $bloquesDia, $carreraId, $grupo, $cargasGrupoDia),
                 'horas_modulo2' => $dia === 6
-                    ? $this->construirHoras($slots, $cargasDia->filter(fn (CargaAcademica $c) => (int) ($c->asignatura->modulo_sabatino ?? 1) === 2), $bloquesDia, $carreraId, $grupo, $cargasGrupoDia->filter(fn (CargaAcademica $c) => (int) ($c->asignatura->modulo_sabatino ?? 1) === 2))
+                    ? $this->construirHoras($slots, $cargasDia->filter(fn (CargaAcademica $c) => (int) $c->modulo_sabatino === 2), $bloquesDia, $carreraId, $grupo, $cargasGrupoDia->filter(fn (CargaAcademica $c) => (int) $c->modulo_sabatino === 2))
                     : null,
             ];
         }
@@ -186,6 +190,7 @@ class CargaAcademicaBuilderController extends Controller
                     'aula_id' => $carga->aula_id,
                     'hora_inicio' => Horario::hhmm($carga->hora_inicio),
                     'hora_fin' => Horario::hhmm($carga->hora_fin),
+                    'modulo_sabatino' => $carga->modulo_sabatino,
                 ];
 
                 continue;
@@ -251,6 +256,7 @@ class CargaAcademicaBuilderController extends Controller
             'grupo_ids.*' => ['exists:grupos,id'],
             'ignorar_carga_id' => ['nullable', 'exists:cargas_academicas,id'],
             'asignatura_id' => ['nullable', 'exists:asignaturas,id'],
+            'modulo_sabatino' => ['nullable', 'integer', 'in:1,2'],
         ]);
 
         $grupoIds = array_map('intval', $datos['grupo_ids'] ?? []);
@@ -265,6 +271,7 @@ class CargaAcademicaBuilderController extends Controller
             $grupoIds,
             isset($datos['ignorar_carga_id']) ? (int) $datos['ignorar_carga_id'] : null,
             isset($datos['asignatura_id']) ? (int) $datos['asignatura_id'] : null,
+            isset($datos['modulo_sabatino']) ? (int) $datos['modulo_sabatino'] : null,
         );
 
         $horas = isset($datos['asignatura_id'])
@@ -322,8 +329,7 @@ class CargaAcademicaBuilderController extends Controller
         $moduloSabatino = $this->moduloSabatinoDeDatos($datos);
 
         return CargaAcademica::query()
-            ->when($moduloSabatino !== null, fn ($q) => $q->whereHas('asignatura', fn ($q2) => $q2->where('modulo_sabatino', $moduloSabatino)
-                ->when($moduloSabatino !== 2, fn ($q3) => $q3->orWhereNull('modulo_sabatino'))))
+            ->when($moduloSabatino !== null, fn ($q) => $q->where('modulo_sabatino', $moduloSabatino))
             ->where('periodo_escolar_id', $datos['periodo_escolar_id'])
             ->where('dia_semana', $datos['dia_semana'])
             ->where('hora_inicio', '<', $datos['hora_fin'])
@@ -347,9 +353,7 @@ class CargaAcademicaBuilderController extends Controller
 
         return DB::table('carga_academica_grupo')
             ->join('cargas_academicas', 'cargas_academicas.id', '=', 'carga_academica_grupo.carga_academica_id')
-            ->when($moduloSabatino !== null, fn ($q) => $q->join('asignaturas', 'asignaturas.id', '=', 'cargas_academicas.asignatura_id')
-                ->where(fn ($q2) => $q2->where('asignaturas.modulo_sabatino', $moduloSabatino)
-                    ->orWhere(fn ($q3) => $moduloSabatino !== 2 ? $q3->whereNull('asignaturas.modulo_sabatino') : $q3->whereRaw('1 = 0'))))
+            ->when($moduloSabatino !== null, fn ($q) => $q->where('cargas_academicas.modulo_sabatino', $moduloSabatino))
             ->where('cargas_academicas.periodo_escolar_id', $datos['periodo_escolar_id'])
             ->where('cargas_academicas.dia_semana', $datos['dia_semana'])
             ->where('cargas_academicas.hora_inicio', '<', $datos['hora_fin'])
@@ -361,15 +365,27 @@ class CargaAcademicaBuilderController extends Controller
     }
 
     /**
-     * Módulo sabatino (1 o 2) declarado por la asignatura del request, solo
-     * relevante en sábado (dia_semana === 6); null en cualquier otro caso,
-     * lo que deja el filtro de módulo desactivado.
+     * Módulo sabatino (1 o 2) de la carga en curso, solo relevante en sábado
+     * (dia_semana === 6); null en cualquier otro caso, lo que deja el filtro
+     * de módulo desactivado. Se prioriza el módulo explícito que manda el
+     * front (la columna del grid — Mód. 1 o Mód. 2 — que el usuario
+     * seleccionó), ya que es la fuente real: una asignatura puede no tener
+     * declarado su propio modulo_sabatino, o el usuario puede estar
+     * colocándola deliberadamente en la columna contraria.
      *
      * @param  array<string, mixed>  $datos
      */
     private function moduloSabatinoDeDatos(array $datos): ?int
     {
-        if ((int) $datos['dia_semana'] !== 6 || ! isset($datos['asignatura_id'])) {
+        if ((int) $datos['dia_semana'] !== 6) {
+            return null;
+        }
+
+        if (isset($datos['modulo_sabatino'])) {
+            return (int) $datos['modulo_sabatino'];
+        }
+
+        if (! isset($datos['asignatura_id'])) {
             return null;
         }
 

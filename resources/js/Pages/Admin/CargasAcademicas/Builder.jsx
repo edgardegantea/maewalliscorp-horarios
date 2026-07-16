@@ -33,6 +33,7 @@ function leerEdicionDesdeUrl() {
                     .filter(Boolean)
                     .map(Number),
                 aula_id: Number(params.get('aula_id')),
+                modulo_sabatino: params.get('modulo_sabatino') ? Number(params.get('modulo_sabatino')) : null,
             },
         },
     };
@@ -98,15 +99,23 @@ export default function Builder({ periodo, carrera, docentes, asignaturas, grupo
     }, []);
 
     const abrirEdicion = useCallback((celda) => {
+        // La carga puede estar en la columna del sábado normal (horas) o en
+        // la del módulo 2 (horas_modulo2); hay que buscar en ambas.
+        const dia = dias.find(
+            (d) => d.horas.some((h) => h.carga_id === celda.carga_id) || d.horas_modulo2?.some((h) => h.carga_id === celda.carga_id),
+        );
+
         setSeleccion({
-            dia_semana: dias.find((d) => d.horas.some((h) => h.carga_id === celda.carga_id)).dia_semana,
+            dia_semana: dia.dia_semana,
             hora_inicio: celda.hora_inicio,
             hora_fin: celda.hora_fin,
+            modulo_sabatino: celda.modulo_sabatino,
             cargaExistente: {
                 id: celda.carga_id,
                 asignatura_id: celda.asignatura_id,
                 grupo_ids: celda.grupo_ids,
                 aula_id: celda.aula_id,
+                modulo_sabatino: celda.modulo_sabatino,
             },
         });
         setModalAbierto(true);

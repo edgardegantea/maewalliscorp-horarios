@@ -37,6 +37,10 @@ class StoreCargaAcademicaRequest extends FormRequest
             'dia_semana' => ['required', 'integer', 'between:1,7'],
             'hora_inicio' => ['required', 'date_format:H:i'],
             'hora_fin' => ['required', 'date_format:H:i', 'after:hora_inicio'],
+            // Módulo (1 o 2) de la columna del grid seleccionada, solo aplica
+            // el sábado; determina contra qué otras cargas se valida el
+            // traslape (ver VerificarDisponibilidadAction).
+            'modulo_sabatino' => ['nullable', 'integer', 'in:1,2'],
         ];
     }
 

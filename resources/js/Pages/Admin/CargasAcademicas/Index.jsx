@@ -117,6 +117,7 @@ function GrupoSection({ item, periodo, mostrarCarrera }) {
                                                 asignatura_id: carga.asignatura_id,
                                                 aula_id: carga.aula_id,
                                                 grupo_ids: carga.grupos.map((g) => g.id).join(','),
+                                                modulo_sabatino: carga.modulo_sabatino || undefined,
                                             })}
                                             className="font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
                                         >
