@@ -174,7 +174,7 @@ it('omite la columna de domingo en el concentrado cuando nadie tiene clase ese d
 
     $dias = (new ConcentradoGeneralExport($periodo))->view()->getData()['dias'];
 
-    expect($dias)->toHaveCount(6)->not->toHaveKey(7);
+    expect($dias)->toHaveCount(7)->not->toHaveKey('7');
 });
 
 it('incluye la columna de domingo en el concentrado cuando algún grupo tiene clase ese día', function () {
@@ -195,7 +195,7 @@ it('incluye la columna de domingo en el concentrado cuando algún grupo tiene cl
 
     $dias = (new ConcentradoGeneralExport($periodo))->view()->getData()['dias'];
 
-    expect($dias)->toHaveCount(7)->toHaveKey(7, 'DOMINGO');
+    expect($dias)->toHaveCount(8)->toHaveKey('7', 'DOMINGO');
 });
 
 it('el concentrado por campus separa las cargas en hojas ESCOLARIZADO, SABATINO y VEGA DE ALATORRE según el sufijo del grupo', function () {
@@ -237,7 +237,7 @@ it('el concentrado por campus separa las cargas en hojas ESCOLARIZADO, SABATINO 
         ->and($porTitulo->get('VEGA DE ALATORRE')->view()->getData()['bloques'][0]['grupo'])->toBe('1F');
 });
 
-it('marca en el concentrado a qué módulo del sábado pertenece cada horario, y no fusiona bloques de módulos distintos aunque compartan aula y sean contiguos', function () {
+it('separa en el concentrado el módulo 1 y el módulo 2 del sábado en columnas distintas, sin fusionar bloques de módulos distintos aunque compartan aula y sean contiguos', function () {
     $periodo = PeriodoEscolar::create(['nombre' => 'P', 'fecha_inicio' => '2026-01-01', 'fecha_fin' => '2026-06-30', 'activo' => true]);
     $carrera = Carrera::create(['nombre' => 'Ingeniería en Sistemas', 'clave' => 'IS']);
     $asignatura = Asignatura::create(['carrera_id' => $carrera->id, 'nombre' => 'Programación I', 'clave' => 'PROG1']);
@@ -263,7 +263,9 @@ it('marca en el concentrado a qué módulo del sábado pertenece cada horario, y
     ]);
     $c2->grupos()->attach($grupo->id);
 
-    $bloques = (new ConcentradoGeneralExport($periodo))->view()->getData()['bloques'];
+    $datos = (new ConcentradoGeneralExport($periodo))->view()->getData();
 
-    expect($bloques[0]['filas'][0]['dias'][6])->toBe("M1 · A-101 09:00 - 10:00\nM2 · A-101 10:00 - 11:00");
+    expect($datos['dias'])->toHaveKey('6-1', 'MÓDULO 1')->toHaveKey('6-2', 'MÓDULO 2');
+    expect($datos['bloques'][0]['filas'][0]['dias']['6-1'])->toBe('A-101 09:00 - 10:00');
+    expect($datos['bloques'][0]['filas'][0]['dias']['6-2'])->toBe('A-101 10:00 - 11:00');
 });

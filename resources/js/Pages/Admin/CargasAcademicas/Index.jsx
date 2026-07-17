@@ -19,9 +19,28 @@ const ESTADO_BADGE = {
     conflicto: { color: 'red', label: 'Con problema' },
 };
 
+// Duración en horas de una carga, a partir de "HH:MM:SS". Cada hora de clase
+// equivale a un crédito, así que sumar la duración de todas las cargas de un
+// grupo (agrupadas o no por asignatura, la suma da lo mismo) da el total de
+// créditos que lleva asignados.
+function horasCarga(carga) {
+    const [hi, mi] = carga.hora_inicio.split(':').map(Number);
+    const [hf, mf] = carga.hora_fin.split(':').map(Number);
+    return (hf * 60 + mf - (hi * 60 + mi)) / 60;
+}
+
+function totalCreditos(cargas) {
+    return cargas.reduce((suma, c) => suma + horasCarga(c), 0);
+}
+
+function formatoCreditos(creditos) {
+    return Number.isInteger(creditos) ? `${creditos}` : creditos.toFixed(1);
+}
+
 function GrupoSection({ item, periodo, mostrarCarrera }) {
     const { grupo, cargas } = item;
     const [abierto, setAbierto] = useState(false);
+    const creditos = totalCreditos(cargas);
 
     const eliminar = (carga) => {
         if (confirm('¿Eliminar esta carga académica?')) {
@@ -50,6 +69,7 @@ function GrupoSection({ item, periodo, mostrarCarrera }) {
                         className={`text-xs font-medium ${cargas.length === 0 ? 'text-slate-400 dark:text-slate-500' : 'text-slate-500 dark:text-slate-400'}`}
                     >
                         {cargas.length} {cargas.length === 1 ? 'clase asignada' : 'clases asignadas'}
+                        {cargas.length > 0 && ` · ${formatoCreditos(creditos)} ${creditos === 1 ? 'crédito' : 'créditos'}`}
                     </span>
                     <Link
                         href={route('admin.cargas.grupo-horario', grupo.id)}
@@ -211,6 +231,7 @@ export default function Index({ periodos, carreras, asignaturas, docentes, perio
     const hayFiltrosSecundarios = asignatura || docente || grupoTexto || estado;
 
     const totalClases = grupos.reduce((acc, item) => acc + item.cargas.length, 0);
+    const totalCreditosGeneral = grupos.reduce((acc, item) => acc + totalCreditos(item.cargas), 0);
 
     return (
         <AuthenticatedLayout header={<h2 className="text-base font-semibold text-slate-900 dark:text-white">Cargas académicas</h2>}>
@@ -375,7 +396,8 @@ export default function Index({ periodos, carreras, asignaturas, docentes, perio
                     <div className="space-y-4">
                         <div className="flex items-center justify-between px-1 text-xs text-slate-500 dark:text-slate-400">
                             <span>
-                                {grupos.length} {grupos.length === 1 ? 'grupo' : 'grupos'} · {totalClases} {totalClases === 1 ? 'clase asignada' : 'clases asignadas'}
+                                {grupos.length} {grupos.length === 1 ? 'grupo' : 'grupos'} · {totalClases} {totalClases === 1 ? 'clase asignada' : 'clases asignadas'} ·{' '}
+                                {formatoCreditos(totalCreditosGeneral)} {totalCreditosGeneral === 1 ? 'crédito' : 'créditos'}
                             </span>
                         </div>
 

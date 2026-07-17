@@ -38,8 +38,17 @@ class ConcentradoGeneralExport implements FromView, WithColumnWidths, WithEvents
         '37474F', // gris azulado
     ];
 
-    /** Días base que siempre se muestran (de lunes a sábado). */
-    private const DIAS_BASE = [1 => 'LUNES', 2 => 'MARTES', 3 => 'MIÉRCOLES', 4 => 'JUEVES', 5 => 'VIERNES', 6 => 'SÁBADO'];
+    /**
+     * Días base que siempre se muestran. El sábado se separa en dos columnas
+     * (módulo 1 y módulo 2, como en el grid del constructor) en vez de una
+     * sola columna "SÁBADO": son semanas distintas del semestre con horarios
+     * de reloj independientes, y mezclarlas en una sola celda de texto no
+     * dejaba claro a cuál pertenecía cada horario.
+     */
+    private const DIAS_BASE = [
+        '1' => 'LUNES', '2' => 'MARTES', '3' => 'MIÉRCOLES', '4' => 'JUEVES', '5' => 'VIERNES',
+        '6-1' => 'MÓDULO 1', '6-2' => 'MÓDULO 2',
+    ];
 
     /** @var array<int, array<string, mixed>>|null */
     private ?array $bloques = null;
@@ -175,10 +184,10 @@ class ConcentradoGeneralExport implements FromView, WithColumnWidths, WithEvents
         }
 
         $usaDomingo = collect($this->bloques())->contains(
-            fn (array $bloque) => collect($bloque['filas'])->contains(fn (array $fila) => filled($fila['dias'][7] ?? null))
+            fn (array $bloque) => collect($bloque['filas'])->contains(fn (array $fila) => filled($fila['dias']['7'] ?? null))
         );
 
-        return $this->diasVisibles = $usaDomingo ? self::DIAS_BASE + [7 => 'DOMINGO'] : self::DIAS_BASE;
+        return $this->diasVisibles = $usaDomingo ? self::DIAS_BASE + ['7' => 'DOMINGO'] : self::DIAS_BASE;
     }
 
     /**
@@ -222,10 +231,8 @@ class ConcentradoGeneralExport implements FromView, WithColumnWidths, WithEvents
                     $primera = $cargasFila->first();
 
                     $dias = [];
-                    foreach ($cargasFila->groupBy('dia_semana') as $diaSemana => $cargasDelDia) {
-                        $dias[$diaSemana] = (int) $diaSemana === 6
-                            ? $this->textoDelSabado($cargasDelDia)
-                            : $this->textoDelDia($cargasDelDia);
+                    foreach ($cargasFila->groupBy(fn (CargaAcademica $c) => $this->claveDia($c)) as $clave => $cargasDeLaClave) {
+                        $dias[$clave] = $this->textoDelDia($cargasDeLaClave);
                     }
 
                     return [
@@ -290,28 +297,17 @@ class ConcentradoGeneralExport implements FromView, WithColumnWidths, WithEvents
     }
 
     /**
-     * Igual que textoDelDia(), pero el sábado agrupa primero por módulo (1 o
-     * 2) antes de fusionar bloques contiguos: dos cargas de módulos distintos
-     * nunca deben combinarse en un solo rango aunque compartan aula y sean
-     * contiguas en el reloj, porque en realidad ocurren en semanas distintas
-     * del semestre. Cada línea se antecede con "M1 ·" o "M2 ·" para que quede
-     * claro a qué módulo pertenece cada horario.
-     *
-     * @param  Collection<int, CargaAcademica>  $cargasDelDia
+     * Clave de columna de un día: el sábado se separa por módulo ("6-1" /
+     * "6-2", dos columnas independientes) para que dos cargas de módulos
+     * distintos nunca se agrupen ni se fusionen entre sí en textoDelDia(),
+     * aunque compartan aula y sean contiguas en el reloj — en realidad
+     * ocurren en semanas distintas del semestre.
      */
-    private function textoDelSabado($cargasDelDia): string
+    private function claveDia(CargaAcademica $c): string
     {
-        return $cargasDelDia
-            ->groupBy(fn (CargaAcademica $c) => (int) ($c->modulo_sabatino ?: 1))
-            ->sortKeys()
-            ->map(function ($cargasDelModulo, $modulo) {
-                $etiqueta = "M{$modulo} · ";
+        $dia = (int) $c->dia_semana;
 
-                return collect(explode("\n", $this->textoDelDia($cargasDelModulo)))
-                    ->map(fn (string $linea) => $etiqueta.$linea)
-                    ->implode("\n");
-            })
-            ->implode("\n");
+        return $dia === 6 ? '6-'.(int) ($c->modulo_sabatino ?: 1) : (string) $dia;
     }
 
     /**
