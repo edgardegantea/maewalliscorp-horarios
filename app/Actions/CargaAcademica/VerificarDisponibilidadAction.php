@@ -17,8 +17,9 @@ class VerificarDisponibilidadAction
      *    un aula/docente/grupo puede chocar entre carreras distintas). Una
      *    carga puede impartirse a una combinación de varios grupos a la vez.
      *  - Cae completa dentro de un bloque de disponibilidad del docente ese día
-     *    (límite laboral: la disponibilidad ya está acotada a un rango <= 8h,
-     *    o <= 12h los sábados).
+     *    (límite laboral: la suma de horas de disponibilidad del día ya está
+     *    acotada a <= 8h, o <= 12h los sábados; los huecos entre bloques no
+     *    cuentan contra ese límite).
      *  - No excede las horas semanales declaradas de la asignatura para ninguno
      *    de los grupos.
      *  - Los sábados, todos los grupos deben ser sabatinos (nombre terminado en
@@ -381,12 +382,16 @@ class VerificarDisponibilidadAction
             return [false, 'El horario está fuera de la disponibilidad declarada del docente.'];
         }
 
-        // Respaldo explícito del límite de horas laborales anclado al inicio del
-        // día: 8 horas de lunes a viernes, 12 horas los sábados.
+        // Respaldo explícito del límite de horas laborales del día: 8 horas de
+        // lunes a viernes, 12 horas los sábados. Se suman las horas reales de
+        // los bloques declarados (no el rango de reloj del primero al
+        // último), para no penalizar huecos entre bloques — un docente puede
+        // trabajar 9-11 y 12-17 (7h) y seguir teniendo 1h libre ese día,
+        // aunque el rango de reloj 9-17 ya sean 8h.
         $limiteHoras = $diaSemana === 6 ? 12 : 8;
-        $limiteMaximo = $this->aMinutos($bloques->first()->hora_inicio) + $limiteHoras * 60;
-        if ($fin > $limiteMaximo) {
-            return [false, "El horario excede el límite de {$limiteHoras} horas laborales del día."];
+        $sumaBloques = $bloques->sum(fn ($b) => $this->aMinutos($b->hora_fin) - $this->aMinutos($b->hora_inicio));
+        if ($sumaBloques > $limiteHoras * 60) {
+            return [false, "La disponibilidad declarada excede el límite de {$limiteHoras} horas laborales del día."];
         }
 
         return [true, null];

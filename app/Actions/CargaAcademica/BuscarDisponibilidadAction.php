@@ -266,11 +266,13 @@ class BuscarDisponibilidadAction
         }
 
         // Mismo límite laboral que VerificarDisponibilidadAction: 8h de lunes
-        // a viernes, 12h los sábados, anclado al inicio del primer bloque.
-        $primerInicio = collect($bloques)->min('inicio');
+        // a viernes, 12h los sábados, sobre la suma real de horas de los
+        // bloques declarados (no el rango de reloj del primero al último),
+        // para no penalizar huecos entre bloques.
+        $sumaBloques = collect($bloques)->sum(fn (array $b) => $b['fin'] - $b['inicio']);
         $limiteHoras = $dia === 6 ? 12 : 8;
 
-        return $finMin <= $primerInicio + $limiteHoras * 60;
+        return $sumaBloques <= $limiteHoras * 60;
     }
 
     /**

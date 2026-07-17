@@ -547,3 +547,21 @@ it('permite repetir docente, aula y grupo en el mismo horario del sábado si se 
     expect(CargaAcademica::count())->toBe(2);
     expect($cargaModulo2->modulo_sabatino)->toBe(2);
 });
+
+it('permite asignar clase en un tercer bloque del día cuando la suma de horas con huecos no excede el límite laboral', function () {
+    $e = escenario();
+    // Reemplaza la disponibilidad lunes 8:00-16:00 de escenario() por una con
+    // huecos: 9-11 (2h), 12-17 (5h) y 18-19 (1h) = 8h en total, aunque el
+    // rango de reloj sea de 10h (9:00 a 19:00).
+    DisponibilidadDocente::where('docente_id', $e['docente']->id)->where('dia_semana', 1)->delete();
+    DisponibilidadDocente::create(['docente_id' => $e['docente']->id, 'periodo_escolar_id' => $e['periodo']->id, 'dia_semana' => 1, 'hora_inicio' => '09:00', 'hora_fin' => '11:00']);
+    DisponibilidadDocente::create(['docente_id' => $e['docente']->id, 'periodo_escolar_id' => $e['periodo']->id, 'dia_semana' => 1, 'hora_inicio' => '12:00', 'hora_fin' => '17:00']);
+    DisponibilidadDocente::create(['docente_id' => $e['docente']->id, 'periodo_escolar_id' => $e['periodo']->id, 'dia_semana' => 1, 'hora_inicio' => '18:00', 'hora_fin' => '19:00']);
+
+    $carga = app(GuardarCargaAcademicaAction::class)->ejecutar(
+        datosCarga($e, ['dia_semana' => 1, 'hora_inicio' => '18:00', 'hora_fin' => '19:00']),
+        $e['admin']->id,
+    );
+
+    expect($carga->exists)->toBeTrue();
+});

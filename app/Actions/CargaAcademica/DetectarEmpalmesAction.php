@@ -83,7 +83,7 @@ class DetectarEmpalmesAction
                 'cargas_academicas.hora_fin',
             ]);
 
-        $cargasPorId = CargaAcademica::with(['docente.user', 'asignatura', 'aula'])
+        $cargasPorId = CargaAcademica::with(['docente.user', 'asignatura', 'aula', 'grupos'])
             ->whereIn('id', $filas->pluck('carga_id')->unique())
             ->get()
             ->keyBy('id');
@@ -143,8 +143,15 @@ class DetectarEmpalmesAction
         return [
             'id' => $c->id,
             'docente' => $c->docente->user->name,
+            'docente_id' => $c->docente_id,
+            'carrera_id' => $c->carrera_id,
             'asignatura' => $c->asignatura->nombre,
+            'asignatura_id' => $c->asignatura_id,
             'aula' => $c->aula->nombre,
+            'aula_id' => $c->aula_id,
+            'grupo_ids' => $c->grupos->pluck('id'),
+            'dia_semana' => $c->dia_semana,
+            'modulo_sabatino' => $c->modulo_sabatino,
             'hora_inicio' => Horario::hhmm($c->hora_inicio),
             'hora_fin' => Horario::hhmm($c->hora_fin),
         ];

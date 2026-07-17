@@ -13,9 +13,10 @@ class GuardarDisponibilidadAction
      * enviados. Valida, por cada día:
      *  - hora_fin > hora_inicio en cada bloque,
      *  - los bloques del mismo día no se traslapan entre sí,
-     *  - el rango total del día (del inicio del primer bloque al fin del último) no
-     *    excede el límite laboral diario — 8 horas de lunes a viernes, 12 horas los
-     *    sábados,
+     *  - la suma de horas trabajadas del día (no el rango de reloj entre el
+     *    primer inicio y el último fin, que penalizaría huecos entre bloques)
+     *    no excede el límite laboral diario — 8 horas de lunes a viernes, 12
+     *    horas los sábados,
      *  - la suma de horas de disponibilidad de toda la semana no excede 40 horas.
      *
      * @param  array<int, array{dia_semana: int, hora_inicio: string, hora_fin: string}>  $bloques
@@ -74,12 +75,12 @@ class GuardarDisponibilidadAction
                 }
             }
 
-            $spanMinutos = end($rangos)['fin'] - $rangos[0]['inicio'];
+            $sumaMinutos = array_sum(array_map(fn (array $r) => $r['fin'] - $r['inicio'], $rangos));
             $limiteHoras = $this->limiteHorasDelDia((int) $dia);
 
-            if ($spanMinutos > $limiteHoras * 60) {
+            if ($sumaMinutos > $limiteHoras * 60) {
                 throw ValidationException::withMessages([
-                    'bloques' => "El rango total de disponibilidad del día {$dia} no puede exceder {$limiteHoras} horas.",
+                    'bloques' => "La suma de horas de disponibilidad del día {$dia} no puede exceder {$limiteHoras} horas.",
                 ]);
             }
         }

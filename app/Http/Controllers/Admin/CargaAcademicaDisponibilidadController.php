@@ -10,6 +10,7 @@ use App\Models\Docente;
 use App\Models\DocenteCarrera;
 use App\Models\Grupo;
 use App\Models\PeriodoEscolar;
+use App\Support\Horario;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -57,6 +58,7 @@ class CargaAcademicaDisponibilidadController extends Controller
             'asignaturas' => Asignatura::whereIn('carrera_id', $carreraIdsVisibles)
                 ->orderBy('nombre')
                 ->get(['id', 'nombre', 'carrera_id', 'semestre']),
+            'slots' => Horario::slots(),
         ]);
     }
 

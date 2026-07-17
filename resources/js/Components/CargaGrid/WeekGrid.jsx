@@ -19,7 +19,7 @@ const siguienteHora = (hora) => {
     return `${String(h).padStart(2, '0')}:00`;
 };
 
-export default function WeekGrid({ dias, slots, onSeleccion, onClickReservado }) {
+export default function WeekGrid({ dias, slots, onSeleccion, onClickReservado, onClickPropuesta }) {
     // arrastre: { dia, modulo, desde, hasta } (índices de slot). `modulo` es
     // 1 o 2 solo para el sábado, que se muestra en dos columnas paralelas.
     const [arrastre, setArrastre] = useState(null);
@@ -41,6 +41,10 @@ export default function WeekGrid({ dias, slots, onSeleccion, onClickReservado })
     const iniciar = (celda, dia, modulo, idx) => {
         if (celda.estado === 'reservado_actual') {
             onClickReservado?.(celda);
+            return;
+        }
+        if (celda.estado === 'propuesta') {
+            onClickPropuesta?.(celda);
             return;
         }
         if (celda.estado !== 'disponible') {

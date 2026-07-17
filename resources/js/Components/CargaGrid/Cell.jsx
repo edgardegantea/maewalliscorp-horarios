@@ -7,6 +7,7 @@ const ESTILOS = {
     grupo_ocupado: 'bg-rose-100 cursor-not-allowed dark:bg-rose-500/20',
     grupo_fuera_horario:
         'bg-slate-100 bg-[repeating-linear-gradient(-45deg,transparent,transparent_4px,rgba(0,0,0,0.05)_4px,rgba(0,0,0,0.05)_8px)] cursor-not-allowed dark:bg-slate-800 dark:bg-[repeating-linear-gradient(-45deg,transparent,transparent_4px,rgba(255,255,255,0.05)_4px,rgba(255,255,255,0.05)_8px)]',
+    propuesta: 'bg-emerald-100 hover:bg-emerald-200 cursor-pointer ring-1 ring-inset ring-emerald-400 dark:bg-emerald-500/20 dark:hover:bg-emerald-500/30 dark:ring-emerald-500/40',
 };
 
 export default function Cell({ celda, seleccionada, onMouseDown, onMouseEnter }) {
@@ -34,6 +35,12 @@ export default function Cell({ celda, seleccionada, onMouseDown, onMouseEnter })
                 <div className="truncate">
                     <div className="font-medium text-slate-800 dark:text-slate-100">{celda.asignatura}</div>
                     <div className="text-slate-500 dark:text-slate-400">{celda.docente}</div>
+                </div>
+            )}
+            {celda.estado === 'propuesta' && (
+                <div className="truncate">
+                    <div className="font-medium text-emerald-800 dark:text-emerald-300">Asignar</div>
+                    <div className="text-emerald-700 dark:text-emerald-400">Aula {celda.aula}</div>
                 </div>
             )}
         </td>

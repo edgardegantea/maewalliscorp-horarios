@@ -3,7 +3,7 @@ import Card from '@/Components/ui/Card';
 import PageHeader from '@/Components/ui/PageHeader';
 import { EmptyRow, TBody, TD, TH, THead, TR, Table } from '@/Components/ui/Table';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, router } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 
 const SECCIONES = [
     { clave: 'docentes', titulo: 'Empalmes de docente', descripcion: 'Un mismo docente con dos clases que se traslapan en el mismo día y módulo.' },
@@ -90,10 +90,10 @@ export default function Diagnostico({ periodo, periodos, empalmes }) {
                                                         <TD className="font-medium text-slate-900 dark:text-white">{e.entidad}</TD>
                                                         <TD>{e.dia}</TD>
                                                         <TD>
-                                                            <DescripcionCarga carga={e.cargas[0]} />
+                                                            <DescripcionCarga carga={e.cargas[0]} periodoId={periodo.id} />
                                                         </TD>
                                                         <TD>
-                                                            <DescripcionCarga carga={e.cargas[1]} />
+                                                            <DescripcionCarga carga={e.cargas[1]} periodoId={periodo.id} />
                                                         </TD>
                                                     </TR>
                                                 ))}
@@ -109,7 +109,9 @@ export default function Diagnostico({ periodo, periodos, empalmes }) {
     );
 }
 
-function DescripcionCarga({ carga }) {
+function DescripcionCarga({ carga, periodoId }) {
+    const puedeVerEnGrid = route().has('admin.cargas.builder');
+
     return (
         <div className="text-xs">
             <div className="font-medium text-slate-700 dark:text-slate-300">
@@ -118,6 +120,26 @@ function DescripcionCarga({ carga }) {
             <div className="text-slate-500 dark:text-slate-400">
                 {carga.asignatura} · {carga.docente} · {carga.aula}
             </div>
+            {puedeVerEnGrid && (
+                <Link
+                    href={route('admin.cargas.builder', {
+                        periodo: periodoId,
+                        carrera: carga.carrera_id,
+                        docente: carga.docente_id,
+                        editar: carga.id,
+                        dia: carga.dia_semana,
+                        hora_inicio: carga.hora_inicio,
+                        hora_fin: carga.hora_fin,
+                        asignatura_id: carga.asignatura_id,
+                        aula_id: carga.aula_id,
+                        grupo_ids: carga.grupo_ids.join(','),
+                        modulo_sabatino: carga.modulo_sabatino || undefined,
+                    })}
+                    className="mt-0.5 inline-block text-indigo-600 underline decoration-dotted hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
+                >
+                    Ver en el grid
+                </Link>
+            )}
         </div>
     );
 }
