@@ -4,14 +4,19 @@ import SelectInput from '@/Components/SelectInput';
 import { useForm } from '@inertiajs/react';
 import { useMemo } from 'react';
 
-const DIAS = [
-    { value: 1, label: 'Lunes' },
-    { value: 2, label: 'Martes' },
-    { value: 3, label: 'Miércoles' },
-    { value: 4, label: 'Jueves' },
-    { value: 5, label: 'Viernes' },
-    { value: 6, label: 'Sábado' },
-    { value: 7, label: 'Domingo' },
+// Cada grupo es un día (o, en sábado, un módulo dentro del día) con su propia
+// lista independiente de bloques. El sábado se separa en dos porque el
+// módulo 1 y el módulo 2 son semanas distintas del semestre y pueden tener
+// horarios de reloj totalmente distintos sin que sea un conflicto real.
+const GRUPOS = [
+    { clave: '1', dia: 1, modulo: null, label: 'Lunes' },
+    { clave: '2', dia: 2, modulo: null, label: 'Martes' },
+    { clave: '3', dia: 3, modulo: null, label: 'Miércoles' },
+    { clave: '4', dia: 4, modulo: null, label: 'Jueves' },
+    { clave: '5', dia: 5, modulo: null, label: 'Viernes' },
+    { clave: '6-1', dia: 6, modulo: 1, label: 'Sábado · Módulo 1' },
+    { clave: '6-2', dia: 6, modulo: 2, label: 'Sábado · Módulo 2' },
+    { clave: '7', dia: 7, modulo: null, label: 'Domingo' },
 ];
 
 // Recorta "HH:MM:SS" a "HH:MM" para los inputs type=time.
@@ -35,13 +40,20 @@ const formatoHoras = (minutos) => {
     return Number.isInteger(horas) ? `${horas}` : horas.toFixed(1);
 };
 
+function claveDe(bloque) {
+    return bloque.dia_semana === 6 ? `6-${bloque.modulo_sabatino ?? 1}` : `${bloque.dia_semana}`;
+}
+
 function agrupar(bloques) {
-    const porDia = {};
-    DIAS.forEach((d) => (porDia[d.value] = []));
+    const porGrupo = {};
+    GRUPOS.forEach((g) => (porGrupo[g.clave] = []));
     bloques.forEach((b) => {
-        porDia[b.dia_semana].push({ hora_inicio: hhmm(b.hora_inicio), hora_fin: hhmm(b.hora_fin) });
+        const clave = claveDe(b);
+        if (porGrupo[clave]) {
+            porGrupo[clave].push({ hora_inicio: hhmm(b.hora_inicio), hora_fin: hhmm(b.hora_fin) });
+        }
     });
-    return porDia;
+    return porGrupo;
 }
 
 export default function DisponibilidadEditor({
@@ -57,43 +69,46 @@ export default function DisponibilidadEditor({
 
     const { data, setData, transform, submit, processing, errors } = useForm({
         periodo_escolar_id: periodo?.id ?? '',
-        dias: inicial,
+        grupos: inicial,
         ...extraFields,
     });
 
-    const agregarBloque = (dia) => {
-        setData('dias', {
-            ...data.dias,
-            [dia]: [...data.dias[dia], { hora_inicio: '08:00', hora_fin: '16:00' }],
+    const agregarBloque = (clave) => {
+        setData('grupos', {
+            ...data.grupos,
+            [clave]: [...data.grupos[clave], { hora_inicio: '08:00', hora_fin: '16:00' }],
         });
     };
 
-    const quitarBloque = (dia, indice) => {
-        setData('dias', {
-            ...data.dias,
-            [dia]: data.dias[dia].filter((_, i) => i !== indice),
+    const quitarBloque = (clave, indice) => {
+        setData('grupos', {
+            ...data.grupos,
+            [clave]: data.grupos[clave].filter((_, i) => i !== indice),
         });
     };
 
-    const cambiarBloque = (dia, indice, campo, valor) => {
-        setData('dias', {
-            ...data.dias,
-            [dia]: data.dias[dia].map((b, i) => (i === indice ? { ...b, [campo]: valor } : b)),
+    const cambiarBloque = (clave, indice, campo, valor) => {
+        setData('grupos', {
+            ...data.grupos,
+            [clave]: data.grupos[clave].map((b, i) => (i === indice ? { ...b, [campo]: valor } : b)),
         });
     };
 
-    const minutosPorDia = useMemo(() => {
+    const minutosPorGrupo = useMemo(() => {
         const totales = {};
-        DIAS.forEach((d) => {
-            totales[d.value] = data.dias[d.value].reduce((sum, b) => sum + minutosBloque(b), 0);
+        GRUPOS.forEach((g) => {
+            totales[g.clave] = data.grupos[g.clave].reduce((sum, b) => sum + minutosBloque(b), 0);
         });
         return totales;
-    }, [data.dias]);
+    }, [data.grupos]);
 
-    const minutosSemana = useMemo(
-        () => Object.values(minutosPorDia).reduce((sum, m) => sum + m, 0),
-        [minutosPorDia],
-    );
+    // El sábado cuenta una sola vez en el total semanal (el módulo con más
+    // horas): módulo 1 y módulo 2 nunca coinciden en el calendario real.
+    const minutosSemana = useMemo(() => {
+        const baseSemana = GRUPOS.filter((g) => g.dia !== 6).reduce((sum, g) => sum + minutosPorGrupo[g.clave], 0);
+        const sabado = Math.max(minutosPorGrupo['6-1'] ?? 0, minutosPorGrupo['6-2'] ?? 0);
+        return baseSemana + sabado;
+    }, [minutosPorGrupo]);
 
     const excedeSemana = minutosSemana > 40 * 60;
 
@@ -102,17 +117,18 @@ export default function DisponibilidadEditor({
 
         transform((form) => {
             const bloquesPlanos = [];
-            Object.entries(form.dias).forEach(([dia, lista]) => {
-                lista.forEach((b) => {
+            GRUPOS.forEach((g) => {
+                (form.grupos[g.clave] ?? []).forEach((b) => {
                     bloquesPlanos.push({
-                        dia_semana: Number(dia),
+                        dia_semana: g.dia,
+                        modulo_sabatino: g.modulo,
                         hora_inicio: b.hora_inicio,
                         hora_fin: b.hora_fin,
                     });
                 });
             });
 
-            const { dias, ...resto } = form;
+            const { grupos, ...resto } = form;
 
             return { ...resto, bloques: bloquesPlanos };
         });
@@ -142,9 +158,11 @@ export default function DisponibilidadEditor({
             )}
 
             <p className="rounded-md bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-500/10 dark:text-amber-400">
-                El rango total de cada día (del inicio del primer bloque al fin del último) no puede
-                exceder 8 horas (12 horas los sábados), y la suma de horas de toda la semana no puede
-                exceder 40 horas. Puedes registrar varios bloques por día para turnos partidos.
+                La suma de horas de cada día (o, en sábado, de cada módulo) no puede exceder 8 horas (12
+                los sábados), y la suma de la semana no puede exceder 40 horas (el sábado cuenta una sola
+                vez, con el módulo de más horas). Puedes registrar varios bloques por día para turnos
+                partidos, y el módulo 1 y el módulo 2 del sábado pueden tener horarios de reloj
+                completamente distintos: ocurren en semanas distintas del semestre y no chocan entre sí.
             </p>
 
             <div
@@ -164,19 +182,19 @@ export default function DisponibilidadEditor({
             <InputError message={errors.bloques} className="mt-2" />
 
             <div className="space-y-4">
-                {DIAS.map((dia) => (
-                    <div key={dia.value} className="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+                {GRUPOS.map((grupo) => (
+                    <div key={grupo.clave} className="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
                         <div className="flex items-center justify-between">
-                            <h4 className="font-medium text-slate-800 dark:text-slate-200">{dia.label}</h4>
+                            <h4 className="font-medium text-slate-800 dark:text-slate-200">{grupo.label}</h4>
                             <div className="flex items-center gap-3">
-                                {minutosPorDia[dia.value] > 0 && (
+                                {minutosPorGrupo[grupo.clave] > 0 && (
                                     <span className="text-xs text-slate-400 dark:text-slate-500">
-                                        {formatoHoras(minutosPorDia[dia.value])}h
+                                        {formatoHoras(minutosPorGrupo[grupo.clave])}h
                                     </span>
                                 )}
                                 <button
                                     type="button"
-                                    onClick={() => agregarBloque(dia.value)}
+                                    onClick={() => agregarBloque(grupo.clave)}
                                     className="text-sm text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
                                 >
                                     + Agregar bloque
@@ -184,12 +202,12 @@ export default function DisponibilidadEditor({
                             </div>
                         </div>
 
-                        {data.dias[dia.value].length === 0 && (
+                        {data.grupos[grupo.clave].length === 0 && (
                             <p className="mt-2 text-sm text-slate-400 dark:text-slate-500">Sin disponibilidad.</p>
                         )}
 
                         <div className="mt-3 space-y-2">
-                            {data.dias[dia.value].map((bloque, indice) => (
+                            {data.grupos[grupo.clave].map((bloque, indice) => (
                                 <div key={indice} className="flex items-center gap-3">
                                     <input
                                         type="time"
@@ -198,7 +216,7 @@ export default function DisponibilidadEditor({
                                         step="3600"
                                         className="rounded-md border-slate-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:[color-scheme:dark]"
                                         value={bloque.hora_inicio}
-                                        onChange={(e) => cambiarBloque(dia.value, indice, 'hora_inicio', e.target.value)}
+                                        onChange={(e) => cambiarBloque(grupo.clave, indice, 'hora_inicio', e.target.value)}
                                     />
                                     <span className="text-slate-500 dark:text-slate-400">a</span>
                                     <input
@@ -208,11 +226,11 @@ export default function DisponibilidadEditor({
                                         step="3600"
                                         className="rounded-md border-slate-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:[color-scheme:dark]"
                                         value={bloque.hora_fin}
-                                        onChange={(e) => cambiarBloque(dia.value, indice, 'hora_fin', e.target.value)}
+                                        onChange={(e) => cambiarBloque(grupo.clave, indice, 'hora_fin', e.target.value)}
                                     />
                                     <button
                                         type="button"
-                                        onClick={() => quitarBloque(dia.value, indice)}
+                                        onClick={() => quitarBloque(grupo.clave, indice)}
                                         className="text-sm text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
                                     >
                                         Quitar

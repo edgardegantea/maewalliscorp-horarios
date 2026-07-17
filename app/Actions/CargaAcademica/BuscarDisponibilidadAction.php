@@ -53,7 +53,7 @@ class BuscarDisponibilidadAction
         $aulas = Aula::where('activo', true)->get(['id', 'nombre', 'capacidad']);
         $matriculaTotal = (int) $grupos->sum('matricula');
 
-        $disponibilidadPorDocenteDia = $this->disponibilidadPorDocenteDia($periodoEscolarId, $docentes->pluck('id'));
+        $disponibilidadPorDocenteDiaModulo = $this->disponibilidadPorDocenteDiaModulo($periodoEscolarId, $docentes->pluck('id'));
         $cargasPorDocenteDia = $this->cargasPorEntidadDia($periodoEscolarId, 'docente_id', $docentes->pluck('id')->all());
         $cargasPorAulaDia = $this->cargasPorEntidadDia($periodoEscolarId, 'aula_id', $aulas->pluck('id')->all());
         $cargasPorGrupoDia = $this->cargasPorGrupoDia($periodoEscolarId, $grupoIds);
@@ -82,7 +82,7 @@ class BuscarDisponibilidadAction
                     }
 
                     foreach ($docentes as $docente) {
-                        if (! $this->docenteDisponible($disponibilidadPorDocenteDia, $docente->id, $dia, $inicioMin, $finMin)) {
+                        if (! $this->docenteDisponible($disponibilidadPorDocenteDiaModulo, $docente->id, $dia, $modulo, $inicioMin, $finMin)) {
                             continue;
                         }
 
@@ -135,18 +135,23 @@ class BuscarDisponibilidadAction
     }
 
     /**
+     * Disponibilidad indexada también por módulo: el sábado, cada módulo
+     * declara su propio horario (pueden ser rangos de reloj distintos, ya que
+     * ocurren en semanas distintas del semestre). Entre semana se guarda bajo
+     * el módulo 0.
+     *
      * @param  Collection<int, int>  $docenteIds
-     * @return array<int, array<int, array<int, array{inicio: int, fin: int}>>>
+     * @return array<int, array<int, array<int, array<int, array{inicio: int, fin: int}>>>>
      */
-    private function disponibilidadPorDocenteDia(int $periodoEscolarId, Collection $docenteIds): array
+    private function disponibilidadPorDocenteDiaModulo(int $periodoEscolarId, Collection $docenteIds): array
     {
         $mapa = [];
 
         DisponibilidadDocente::where('periodo_escolar_id', $periodoEscolarId)
             ->whereIn('docente_id', $docenteIds)
-            ->get(['docente_id', 'dia_semana', 'hora_inicio', 'hora_fin'])
+            ->get(['docente_id', 'dia_semana', 'modulo_sabatino', 'hora_inicio', 'hora_fin'])
             ->each(function ($b) use (&$mapa) {
-                $mapa[$b->docente_id][$b->dia_semana][] = [
+                $mapa[$b->docente_id][$b->dia_semana][(int) $b->modulo_sabatino][] = [
                     'inicio' => Horario::aMinutos($b->hora_inicio),
                     'fin' => Horario::aMinutos($b->hora_fin),
                 ];
@@ -247,11 +252,11 @@ class BuscarDisponibilidadAction
     }
 
     /**
-     * @param  array<int, array<int, array{inicio: int, fin: int}>>  $disponibilidadPorDocenteDia
+     * @param  array<int, array<int, array<int, array{inicio: int, fin: int}>>>  $disponibilidadPorDocenteDiaModulo
      */
-    private function docenteDisponible(array $disponibilidadPorDocenteDia, int $docenteId, int $dia, int $inicioMin, int $finMin): bool
+    private function docenteDisponible(array $disponibilidadPorDocenteDiaModulo, int $docenteId, int $dia, int $modulo, int $inicioMin, int $finMin): bool
     {
-        $bloques = $disponibilidadPorDocenteDia[$docenteId][$dia] ?? [];
+        $bloques = $disponibilidadPorDocenteDiaModulo[$docenteId][$dia][$modulo] ?? [];
 
         if (empty($bloques)) {
             return false;

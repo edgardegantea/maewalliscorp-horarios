@@ -343,6 +343,7 @@ it('rechaza asignar clase el sábado a un grupo que no es sabatino', function ()
         'docente_id' => $e['docente']->id,
         'periodo_escolar_id' => $e['periodo']->id,
         'dia_semana' => 6,
+        'modulo_sabatino' => 1,
         'hora_inicio' => '08:00',
         'hora_fin' => '14:00',
     ]);
@@ -361,6 +362,7 @@ it('permite asignar clase el sábado a un grupo sabatino terminado en F', functi
         'docente_id' => $e['docente']->id,
         'periodo_escolar_id' => $e['periodo']->id,
         'dia_semana' => 6,
+        'modulo_sabatino' => 1,
         'hora_inicio' => '08:00',
         'hora_fin' => '14:00',
     ]);
@@ -380,6 +382,7 @@ it('permite asignar clase el sábado a un grupo terminado en B', function () {
         'docente_id' => $e['docente']->id,
         'periodo_escolar_id' => $e['periodo']->id,
         'dia_semana' => 6,
+        'modulo_sabatino' => 1,
         'hora_inicio' => '08:00',
         'hora_fin' => '14:00',
     ]);
@@ -433,6 +436,15 @@ it('permite repetir docente, aula y grupo en el mismo horario del sábado si son
         'docente_id' => $e['docente']->id,
         'periodo_escolar_id' => $e['periodo']->id,
         'dia_semana' => 6,
+        'modulo_sabatino' => 1,
+        'hora_inicio' => '08:00',
+        'hora_fin' => '20:00',
+    ]);
+    DisponibilidadDocente::create([
+        'docente_id' => $e['docente']->id,
+        'periodo_escolar_id' => $e['periodo']->id,
+        'dia_semana' => 6,
+        'modulo_sabatino' => 2,
         'hora_inicio' => '08:00',
         'hora_fin' => '20:00',
     ]);
@@ -474,6 +486,7 @@ it('sigue detectando choque de docente en sábado entre dos cargas del mismo mó
         'docente_id' => $e['docente']->id,
         'periodo_escolar_id' => $e['periodo']->id,
         'dia_semana' => 6,
+        'modulo_sabatino' => 1,
         'hora_inicio' => '08:00',
         'hora_fin' => '20:00',
     ]);
@@ -514,6 +527,15 @@ it('permite repetir docente, aula y grupo en el mismo horario del sábado si se 
         'docente_id' => $e['docente']->id,
         'periodo_escolar_id' => $e['periodo']->id,
         'dia_semana' => 6,
+        'modulo_sabatino' => 1,
+        'hora_inicio' => '08:00',
+        'hora_fin' => '20:00',
+    ]);
+    DisponibilidadDocente::create([
+        'docente_id' => $e['docente']->id,
+        'periodo_escolar_id' => $e['periodo']->id,
+        'dia_semana' => 6,
+        'modulo_sabatino' => 2,
         'hora_inicio' => '08:00',
         'hora_fin' => '20:00',
     ]);

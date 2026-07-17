@@ -95,7 +95,7 @@ class CargaAcademicaBuilderController extends Controller
 
         $disponibilidad = DisponibilidadDocente::where('docente_id', $docenteId)
             ->where('periodo_escolar_id', $periodoId)
-            ->get(['dia_semana', 'hora_inicio', 'hora_fin']);
+            ->get(['dia_semana', 'modulo_sabatino', 'hora_inicio', 'hora_fin']);
 
         // Todas las cargas del docente en el periodo (cualquier carrera) — bloquean su horario.
         $cargasDocente = CargaAcademica::with(['asignatura', 'grupos', 'aula'])
@@ -121,24 +121,26 @@ class CargaAcademicaBuilderController extends Controller
             $cargasDia = $cargasDocente->where('dia_semana', $dia);
             $cargasGrupoDia = $cargasGrupo->where('dia_semana', $dia);
 
+            // El sábado, cada módulo tiene su propia disponibilidad declarada
+            // (pueden ser horarios de reloj distintos: son semanas distintas
+            // del semestre) y se agrupa por el módulo propio de la carga
+            // (columna del grid en la que se guardó), no por el de su
+            // asignatura: una carga puede colocarse deliberadamente en la
+            // columna contraria a la clasificación por defecto de su asignatura.
+            $bloquesModulo1 = $dia === 6 ? $bloquesDia->where('modulo_sabatino', '!=', 2) : $bloquesDia;
+            $bloquesModulo2 = $dia === 6 ? $bloquesDia->where('modulo_sabatino', 2) : null;
+
             $dias[] = [
                 'dia_semana' => $dia,
                 'disponibilidad' => $bloquesDia->map(fn ($b) => [
                     'hora_inicio' => Horario::hhmm($b->hora_inicio),
                     'hora_fin' => Horario::hhmm($b->hora_fin),
                 ])->values(),
-                // El sábado se divide visualmente en dos columnas (módulo 1 y
-                // módulo 2) porque un mismo docente puede tener, en el mismo
-                // horario, una carga de cada módulo (distintas semanas). Se
-                // agrupa por el módulo propio de la carga (columna del grid en
-                // la que se guardó), no por el de su asignatura: una carga
-                // puede colocarse deliberadamente en la columna contraria a la
-                // clasificación por defecto de su asignatura.
                 'horas' => $dia === 6
-                    ? $this->construirHoras($slots, $cargasDia->filter(fn (CargaAcademica $c) => (int) $c->modulo_sabatino !== 2), $bloquesDia, $carreraId, $grupo, $cargasGrupoDia->filter(fn (CargaAcademica $c) => (int) $c->modulo_sabatino !== 2))
+                    ? $this->construirHoras($slots, $cargasDia->filter(fn (CargaAcademica $c) => (int) $c->modulo_sabatino !== 2), $bloquesModulo1, $carreraId, $grupo, $cargasGrupoDia->filter(fn (CargaAcademica $c) => (int) $c->modulo_sabatino !== 2))
                     : $this->construirHoras($slots, $cargasDia, $bloquesDia, $carreraId, $grupo, $cargasGrupoDia),
                 'horas_modulo2' => $dia === 6
-                    ? $this->construirHoras($slots, $cargasDia->filter(fn (CargaAcademica $c) => (int) $c->modulo_sabatino === 2), $bloquesDia, $carreraId, $grupo, $cargasGrupoDia->filter(fn (CargaAcademica $c) => (int) $c->modulo_sabatino === 2))
+                    ? $this->construirHoras($slots, $cargasDia->filter(fn (CargaAcademica $c) => (int) $c->modulo_sabatino === 2), $bloquesModulo2, $carreraId, $grupo, $cargasGrupoDia->filter(fn (CargaAcademica $c) => (int) $c->modulo_sabatino === 2))
                     : null,
             ];
         }

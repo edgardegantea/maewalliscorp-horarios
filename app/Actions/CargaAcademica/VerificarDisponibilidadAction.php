@@ -94,7 +94,7 @@ class VerificarDisponibilidadAction
             }
         }
 
-        [$dentro, $mensajeDisp] = $this->cabeEnDisponibilidad($docenteId, $periodoEscolarId, $diaSemana, $horaInicio, $horaFin);
+        [$dentro, $mensajeDisp] = $this->cabeEnDisponibilidad($docenteId, $periodoEscolarId, $diaSemana, $horaInicio, $horaFin, $moduloSabatino);
 
         return new ResultadoVerificacion($conflictos, $dentro, $mensajeDisp);
     }
@@ -357,10 +357,15 @@ class VerificarDisponibilidadAction
         int $diaSemana,
         string $horaInicio,
         string $horaFin,
+        ?int $moduloSabatino = null,
     ): array {
         $bloques = DisponibilidadDocente::where('docente_id', $docenteId)
             ->where('periodo_escolar_id', $periodoEscolarId)
             ->where('dia_semana', $diaSemana)
+            // El sábado, cada módulo declara su propia disponibilidad (pueden
+            // tener horarios de reloj distintos, ya que son semanas distintas
+            // del semestre); si aún no se sabe el módulo, no se puede acotar.
+            ->when($diaSemana === 6 && $moduloSabatino !== null, fn ($q) => $q->where('modulo_sabatino', $moduloSabatino))
             ->orderBy('hora_inicio')
             ->get(['hora_inicio', 'hora_fin']);
 

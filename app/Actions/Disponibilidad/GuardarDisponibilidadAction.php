@@ -10,16 +10,21 @@ class GuardarDisponibilidadAction
 {
     /**
      * Reemplaza toda la disponibilidad de un docente en un periodo con los bloques
-     * enviados. Valida, por cada día:
+     * enviados. Valida, por cada día (y, en sábado, por cada módulo por separado,
+     * ya que el módulo 1 y el módulo 2 son semanas distintas del semestre y
+     * pueden tener horarios de reloj completamente distintos sin chocar entre
+     * sí — p. ej. módulo 1 de 8:00 a 14:00 y módulo 2 de 12:00 a 18:00):
      *  - hora_fin > hora_inicio en cada bloque,
-     *  - los bloques del mismo día no se traslapan entre sí,
-     *  - la suma de horas trabajadas del día (no el rango de reloj entre el
-     *    primer inicio y el último fin, que penalizaría huecos entre bloques)
+     *  - los bloques del mismo día (y módulo) no se traslapan entre sí,
+     *  - la suma de horas trabajadas del día/módulo (no el rango de reloj entre
+     *    el primer inicio y el último fin, que penalizaría huecos entre bloques)
      *    no excede el límite laboral diario — 8 horas de lunes a viernes, 12
      *    horas los sábados,
-     *  - la suma de horas de disponibilidad de toda la semana no excede 40 horas.
+     *  - la suma de horas de disponibilidad de toda la semana no excede 40
+     *    horas, tomando del sábado el módulo con más horas (el otro módulo
+     *    ocurre en una semana distinta, así que no se suman ambos a la vez).
      *
-     * @param  array<int, array{dia_semana: int, hora_inicio: string, hora_fin: string}>  $bloques
+     * @param  array<int, array{dia_semana: int, modulo_sabatino: int|null, hora_inicio: string, hora_fin: string}>  $bloques
      */
     public function ejecutar(int $docenteId, int $periodoEscolarId, array $bloques): void
     {
@@ -35,6 +40,7 @@ class GuardarDisponibilidadAction
                     'docente_id' => $docenteId,
                     'periodo_escolar_id' => $periodoEscolarId,
                     'dia_semana' => $bloque['dia_semana'],
+                    'modulo_sabatino' => (int) $bloque['dia_semana'] === 6 ? ($bloque['modulo_sabatino'] ?? 1) : 0,
                     'hora_inicio' => $bloque['hora_inicio'],
                     'hora_fin' => $bloque['hora_fin'],
                 ]);
@@ -43,12 +49,13 @@ class GuardarDisponibilidadAction
     }
 
     /**
-     * @param  array<int, array{dia_semana: int, hora_inicio: string, hora_fin: string}>  $bloques
+     * @param  array<int, array{dia_semana: int, modulo_sabatino: int|null, hora_inicio: string, hora_fin: string}>  $bloques
      */
     private function validar(array $bloques): void
     {
-        $porDia = [];
-        $totalMinutosSemana = 0;
+        $porGrupo = [];
+        $minutosPorDiaNoSabado = [];
+        $minutosPorModuloSabado = [1 => 0, 2 => 0];
 
         foreach ($bloques as $indice => $bloque) {
             $inicio = $this->aMinutos($bloque['hora_inicio']);
@@ -60,34 +67,49 @@ class GuardarDisponibilidadAction
                 ]);
             }
 
-            $porDia[$bloque['dia_semana']][] = ['inicio' => $inicio, 'fin' => $fin];
-            $totalMinutosSemana += $fin - $inicio;
+            $dia = (int) $bloque['dia_semana'];
+            $modulo = $dia === 6 ? (int) ($bloque['modulo_sabatino'] ?? 1) : 0;
+            $clave = "{$dia}:{$modulo}";
+
+            $porGrupo[$clave][] = ['inicio' => $inicio, 'fin' => $fin, 'dia' => $dia, 'modulo' => $modulo];
+
+            if ($dia === 6) {
+                $minutosPorModuloSabado[$modulo] += $fin - $inicio;
+            } else {
+                $minutosPorDiaNoSabado[$dia] = ($minutosPorDiaNoSabado[$dia] ?? 0) + ($fin - $inicio);
+            }
         }
 
-        foreach ($porDia as $dia => $rangos) {
+        foreach ($porGrupo as $rangos) {
             usort($rangos, fn ($a, $b) => $a['inicio'] <=> $b['inicio']);
+            $dia = $rangos[0]['dia'];
+            $modulo = $rangos[0]['modulo'];
 
             for ($i = 1; $i < count($rangos); $i++) {
                 if ($rangos[$i]['inicio'] < $rangos[$i - 1]['fin']) {
+                    $descripcion = $dia === 6 ? "sábado (módulo {$modulo})" : "día {$dia}";
                     throw ValidationException::withMessages([
-                        'bloques' => "Los bloques del día {$dia} se traslapan entre sí.",
+                        'bloques' => "Los bloques del {$descripcion} se traslapan entre sí.",
                     ]);
                 }
             }
 
             $sumaMinutos = array_sum(array_map(fn (array $r) => $r['fin'] - $r['inicio'], $rangos));
-            $limiteHoras = $this->limiteHorasDelDia((int) $dia);
+            $limiteHoras = $dia === 6 ? 12 : 8;
 
             if ($sumaMinutos > $limiteHoras * 60) {
+                $descripcion = $dia === 6 ? "del sábado (módulo {$modulo})" : "del día {$dia}";
                 throw ValidationException::withMessages([
-                    'bloques' => "La suma de horas de disponibilidad del día {$dia} no puede exceder {$limiteHoras} horas.",
+                    'bloques' => "La suma de horas de disponibilidad {$descripcion} no puede exceder {$limiteHoras} horas.",
                 ]);
             }
         }
 
+        $totalMinutosSemana = array_sum($minutosPorDiaNoSabado) + max($minutosPorModuloSabado);
+
         if ($totalMinutosSemana > 40 * 60) {
             throw ValidationException::withMessages([
-                'bloques' => 'La suma de horas de disponibilidad de la semana no puede exceder 40 horas.',
+                'bloques' => 'La suma de horas de disponibilidad de la semana no puede exceder 40 horas (el sábado cuenta una sola vez, con el módulo de más horas).',
             ]);
         }
     }
@@ -97,13 +119,5 @@ class GuardarDisponibilidadAction
         [$h, $m] = array_map('intval', explode(':', $hora));
 
         return $h * 60 + $m;
-    }
-
-    /**
-     * Límite de horas laborales por día: 12 horas los sábados (día 6), 8 el resto.
-     */
-    private function limiteHorasDelDia(int $diaSemana): int
-    {
-        return $diaSemana === 6 ? 12 : 8;
     }
 }

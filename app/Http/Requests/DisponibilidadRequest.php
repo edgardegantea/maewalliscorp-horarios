@@ -17,6 +17,7 @@ class DisponibilidadRequest extends FormRequest
             'periodo_escolar_id' => ['required', 'exists:periodos_escolares,id'],
             'bloques' => ['present', 'array'],
             'bloques.*.dia_semana' => ['required', 'integer', 'between:1,7'],
+            'bloques.*.modulo_sabatino' => ['nullable', 'integer', 'in:1,2'],
             'bloques.*.hora_inicio' => ['required', 'date_format:H:i'],
             'bloques.*.hora_fin' => ['required', 'date_format:H:i'],
         ];

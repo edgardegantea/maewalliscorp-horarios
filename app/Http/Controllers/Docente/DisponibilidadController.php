@@ -31,7 +31,7 @@ class DisponibilidadController extends Controller
                     ->where('periodo_escolar_id', $periodo->id)
                     ->orderBy('dia_semana')
                     ->orderBy('hora_inicio')
-                    ->get(['dia_semana', 'hora_inicio', 'hora_fin'])
+                    ->get(['dia_semana', 'modulo_sabatino', 'hora_inicio', 'hora_fin'])
                 : [],
             'diasNoLaborables' => $periodo
                 ? DiaNoLaborable::whereBetween('fecha', [$periodo->fecha_inicio, $periodo->fecha_fin])
