@@ -223,7 +223,9 @@ class ConcentradoGeneralExport implements FromView, WithColumnWidths, WithEvents
 
                     $dias = [];
                     foreach ($cargasFila->groupBy('dia_semana') as $diaSemana => $cargasDelDia) {
-                        $dias[$diaSemana] = $this->textoDelDia($cargasDelDia);
+                        $dias[$diaSemana] = (int) $diaSemana === 6
+                            ? $this->textoDelSabado($cargasDelDia)
+                            : $this->textoDelDia($cargasDelDia);
                     }
 
                     return [
@@ -285,6 +287,31 @@ class ConcentradoGeneralExport implements FromView, WithColumnWidths, WithEvents
         $mezclar = fn (int $canal) => (int) round($canal + (255 - $canal) * $factor);
 
         return sprintf('%02X%02X%02X', $mezclar($r), $mezclar($g), $mezclar($b));
+    }
+
+    /**
+     * Igual que textoDelDia(), pero el sábado agrupa primero por módulo (1 o
+     * 2) antes de fusionar bloques contiguos: dos cargas de módulos distintos
+     * nunca deben combinarse en un solo rango aunque compartan aula y sean
+     * contiguas en el reloj, porque en realidad ocurren en semanas distintas
+     * del semestre. Cada línea se antecede con "M1 ·" o "M2 ·" para que quede
+     * claro a qué módulo pertenece cada horario.
+     *
+     * @param  Collection<int, CargaAcademica>  $cargasDelDia
+     */
+    private function textoDelSabado($cargasDelDia): string
+    {
+        return $cargasDelDia
+            ->groupBy(fn (CargaAcademica $c) => (int) ($c->modulo_sabatino ?: 1))
+            ->sortKeys()
+            ->map(function ($cargasDelModulo, $modulo) {
+                $etiqueta = "M{$modulo} · ";
+
+                return collect(explode("\n", $this->textoDelDia($cargasDelModulo)))
+                    ->map(fn (string $linea) => $etiqueta.$linea)
+                    ->implode("\n");
+            })
+            ->implode("\n");
     }
 
     /**

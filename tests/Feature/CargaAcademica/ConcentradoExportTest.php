@@ -236,3 +236,34 @@ it('el concentrado por campus separa las cargas en hojas ESCOLARIZADO, SABATINO 
         ->and($porTitulo->get('SABATINO')->view()->getData()['bloques'][0]['grupo'])->toBe('1B')
         ->and($porTitulo->get('VEGA DE ALATORRE')->view()->getData()['bloques'][0]['grupo'])->toBe('1F');
 });
+
+it('marca en el concentrado a qué módulo del sábado pertenece cada horario, y no fusiona bloques de módulos distintos aunque compartan aula y sean contiguos', function () {
+    $periodo = PeriodoEscolar::create(['nombre' => 'P', 'fecha_inicio' => '2026-01-01', 'fecha_fin' => '2026-06-30', 'activo' => true]);
+    $carrera = Carrera::create(['nombre' => 'Ingeniería en Sistemas', 'clave' => 'IS']);
+    $asignatura = Asignatura::create(['carrera_id' => $carrera->id, 'nombre' => 'Programación I', 'clave' => 'PROG1']);
+    $grupo = Grupo::create(['carrera_id' => $carrera->id, 'periodo_escolar_id' => $periodo->id, 'nombre' => '1F', 'semestre' => 1, 'matricula' => 30, 'modalidad' => 'Escolarizado']);
+    $aula = Aula::create(['nombre' => 'A-101']);
+    $docenteUser = User::factory()->docente()->create(['name' => 'Juan Pérez']);
+    $docente = Docente::create(['user_id' => $docenteUser->id]);
+
+    // Misma aula y horas contiguas (09:00-10:00 y 10:00-11:00), pero de
+    // módulos distintos: no deben fusionarse en un solo rango "09:00-11:00"
+    // como haría textoDelDia() para bloques normales, porque en realidad
+    // ocurren en semanas distintas del semestre.
+    $c1 = CargaAcademica::create([
+        'periodo_escolar_id' => $periodo->id, 'carrera_id' => $carrera->id, 'docente_id' => $docente->id,
+        'asignatura_id' => $asignatura->id, 'aula_id' => $aula->id, 'modulo_sabatino' => 1,
+        'dia_semana' => 6, 'hora_inicio' => '09:00', 'hora_fin' => '10:00',
+    ]);
+    $c1->grupos()->attach($grupo->id);
+    $c2 = CargaAcademica::create([
+        'periodo_escolar_id' => $periodo->id, 'carrera_id' => $carrera->id, 'docente_id' => $docente->id,
+        'asignatura_id' => $asignatura->id, 'aula_id' => $aula->id, 'modulo_sabatino' => 2,
+        'dia_semana' => 6, 'hora_inicio' => '10:00', 'hora_fin' => '11:00',
+    ]);
+    $c2->grupos()->attach($grupo->id);
+
+    $bloques = (new ConcentradoGeneralExport($periodo))->view()->getData()['bloques'];
+
+    expect($bloques[0]['filas'][0]['dias'][6])->toBe("M1 · A-101 09:00 - 10:00\nM2 · A-101 10:00 - 11:00");
+});
