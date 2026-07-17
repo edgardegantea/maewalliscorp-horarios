@@ -18,9 +18,14 @@ class ReporteController extends Controller
 {
     use ScopedByCarrera;
 
+    /** Límite de horas semanales asignadas a partir del cual se marca para revisión. */
+    private const LIMITE_HORAS_SEMANA = 24;
+
     /**
      * Horas asignadas por docente en el periodo, por día y total semanal,
-     * comparadas contra el límite de 8h/día declarado en su disponibilidad.
+     * comparadas contra el límite de 8h/día declarado en su disponibilidad y
+     * contra el límite de horas semanales a partir del cual conviene revisar
+     * la carga del docente.
      */
     public function cargaDocente(Request $request): Response
     {
@@ -41,11 +46,25 @@ class ReporteController extends Controller
                 ->map(function (Docente $docente) use ($periodoId) {
                     $cargas = CargaAcademica::where('docente_id', $docente->id)
                         ->where('periodo_escolar_id', $periodoId)
-                        ->get(['dia_semana', 'hora_inicio', 'hora_fin']);
+                        ->get(['dia_semana', 'modulo_sabatino', 'hora_inicio', 'hora_fin']);
 
-                    $minutosPorDia = $cargas
-                        ->groupBy('dia_semana')
-                        ->map(fn ($delDia) => $delDia->sum(fn ($c) => Horario::aMinutos($c->hora_fin) - Horario::aMinutos($c->hora_inicio)));
+                    $minutosPorDiaModulo = $cargas
+                        ->groupBy(fn (CargaAcademica $c) => "{$c->dia_semana}:{$c->modulo_sabatino}")
+                        ->map(fn ($delGrupo) => $delGrupo->sum(fn ($c) => Horario::aMinutos($c->hora_fin) - Horario::aMinutos($c->hora_inicio)));
+
+                    // El sábado, módulo 1 y módulo 2 son semanas distintas del
+                    // semestre y nunca coexisten en el calendario real: se
+                    // toma el módulo con más horas ese día, no la suma de
+                    // ambos, igual que en el límite de disponibilidad.
+                    $minutosPorDia = collect(range(1, 7))->mapWithKeys(function (int $dia) use ($minutosPorDiaModulo) {
+                        if ($dia !== 6) {
+                            return [$dia => $minutosPorDiaModulo->get("{$dia}:0", 0)];
+                        }
+
+                        $modulos = collect([0, 1, 2])->map(fn ($m) => $minutosPorDiaModulo->get("6:{$m}", 0));
+
+                        return [$dia => $modulos->max()];
+                    });
 
                     $totalMinutos = $minutosPorDia->sum();
 
@@ -57,6 +76,7 @@ class ReporteController extends Controller
                         ]),
                         'horas_totales' => round($totalMinutos / 60, 1),
                         'excede_algun_dia' => $minutosPorDia->contains(fn ($min) => $min > 8 * 60),
+                        'excede_semana' => $totalMinutos > self::LIMITE_HORAS_SEMANA * 60,
                     ];
                 })
                 ->sortByDesc('horas_totales')
@@ -67,6 +87,7 @@ class ReporteController extends Controller
             'periodos' => PeriodoEscolar::orderByDesc('fecha_inicio')->get(),
             'periodoSeleccionado' => $periodoId,
             'docentes' => $docentes,
+            'limiteHorasSemana' => self::LIMITE_HORAS_SEMANA,
         ]);
     }
 
