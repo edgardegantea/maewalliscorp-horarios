@@ -1,9 +1,10 @@
+import Icon from '@/Components/Icon';
 import Card from '@/Components/ui/Card';
 import PageHeader from '@/Components/ui/PageHeader';
 import SelectInput from '@/Components/SelectInput';
 import { EmptyRow, TBody, TD, TH, THead, TR, Table } from '@/Components/ui/Table';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, router } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 
 export default function UtilizacionAulas({ periodos, periodoSeleccionado, aulas }) {
     const cambiarPeriodo = (periodoId) => {
@@ -44,6 +45,9 @@ export default function UtilizacionAulas({ periodos, periodoSeleccionado, aulas 
                                 <TH>Aula</TH>
                                 <TH align="center">Horas ocupadas/semana</TH>
                                 <TH>Ocupación</TH>
+                                <TH align="right">
+                                    <span className="sr-only">Acciones</span>
+                                </TH>
                             </TR>
                         </THead>
                         <TBody>
@@ -62,9 +66,18 @@ export default function UtilizacionAulas({ periodos, periodoSeleccionado, aulas 
                                             <span className="text-sm text-slate-500 dark:text-slate-400">{aula.porcentaje}%</span>
                                         </div>
                                     </TD>
+                                    <TD align="right">
+                                        <Link
+                                            href={route('admin.reportes.aula-horario', { aula: aula.id, periodo: periodoSeleccionado })}
+                                            className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
+                                        >
+                                            <Icon name="calendar" className="h-3.5 w-3.5" />
+                                            Ver horario
+                                        </Link>
+                                    </TD>
                                 </TR>
                             ))}
-                            {aulas.length === 0 && <EmptyRow colSpan={3}>Selecciona un periodo para ver la utilización.</EmptyRow>}
+                            {aulas.length === 0 && <EmptyRow colSpan={4}>Selecciona un periodo para ver la utilización.</EmptyRow>}
                         </TBody>
                     </Table>
                 </Card>

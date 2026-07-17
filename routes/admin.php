@@ -49,6 +49,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('auditoria', [AuditoriaController::class, 'index'])->name('auditoria.index');
 
         Route::get('reportes/utilizacion-aulas', [ReporteController::class, 'utilizacionAulas'])->name('reportes.utilizacion-aulas');
+        Route::get('reportes/utilizacion-aulas/{aula}', [ReporteController::class, 'horarioAula'])->name('reportes.aula-horario');
 
         Route::resource('dias-no-laborables', DiaNoLaborableController::class)
             ->only(['index', 'store', 'destroy'])
