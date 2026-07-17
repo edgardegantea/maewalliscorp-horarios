@@ -19,7 +19,7 @@ it('muestra alertas de grupos sin clases y docentes sin disponibilidad al admin'
 
     $respuesta->assertOk();
     $respuesta->assertInertia(fn ($page) => $page
-        ->where('alertas.grupos_sin_clases', ["{$grupo->nombre} ({$carrera->nombre})"])
+        ->where('alertas.grupos_sin_clases', [['id' => $grupo->id, 'texto' => "{$grupo->nombre} ({$carrera->nombre})"]])
         ->where('alertas.docentes_sin_disponibilidad', ['Sin Disponibilidad'])
     );
 });

@@ -5,6 +5,8 @@ use App\Http\Controllers\Admin\AuditoriaController;
 use App\Http\Controllers\Admin\AulaController;
 use App\Http\Controllers\Admin\CargaAcademicaBuilderController;
 use App\Http\Controllers\Admin\CargaAcademicaController;
+use App\Http\Controllers\Admin\CargaAcademicaDiagnosticoController;
+use App\Http\Controllers\Admin\CargaAcademicaDisponibilidadController;
 use App\Http\Controllers\Admin\CarreraController;
 use App\Http\Controllers\Admin\ConcentradoExportController;
 use App\Http\Controllers\Admin\CoordinadorCarreraController;
@@ -71,6 +73,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('cargas-academicas/verificar', [CargaAcademicaBuilderController::class, 'verificar'])->name('cargas.verificar');
         Route::post('cargas-academicas/horas-asignaturas', [CargaAcademicaBuilderController::class, 'horasPorAsignaturas'])->name('cargas.horas-asignaturas');
         Route::get('cargas-academicas/grupos/{grupo}/horario', [CargaAcademicaController::class, 'horarioGrupo'])->name('cargas.grupo-horario');
+        Route::get('cargas-academicas/diagnostico', [CargaAcademicaDiagnosticoController::class, 'index'])->name('cargas.diagnostico');
+        Route::get('cargas-academicas/disponibilidad', [CargaAcademicaDisponibilidadController::class, 'index'])->name('cargas.disponibilidad');
+        Route::post('cargas-academicas/disponibilidad/buscar', [CargaAcademicaDisponibilidadController::class, 'buscar'])->name('cargas.disponibilidad.buscar');
+        Route::post('cargas-academicas/disponibilidad/docentes', [CargaAcademicaDisponibilidadController::class, 'docentes'])->name('cargas.disponibilidad.docentes');
 
         Route::get('concentrado/export', ConcentradoExportController::class)->name('concentrado.export');
 

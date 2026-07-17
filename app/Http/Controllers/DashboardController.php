@@ -49,7 +49,7 @@ class DashboardController extends Controller
             ->with('carrera')
             ->orderBy('nombre')
             ->get()
-            ->map(fn (Grupo $g) => "{$g->nombre} ({$g->carrera->nombre})");
+            ->map(fn (Grupo $g) => ['id' => $g->id, 'texto' => "{$g->nombre} ({$g->carrera->nombre})"]);
 
         $docenteIdsConDisponibilidad = DisponibilidadDocente::where('periodo_escolar_id', $periodo->id)
             ->pluck('docente_id')
@@ -66,6 +66,7 @@ class DashboardController extends Controller
 
         return [
             'periodo' => $periodo->nombre,
+            'periodo_id' => $periodo->id,
             'grupos_sin_clases' => $gruposSinClases->values(),
             'docentes_sin_disponibilidad' => $docentesSinDisponibilidad->values(),
         ];

@@ -86,6 +86,9 @@ function PanelPendientes({ alertas }) {
             icon: 'user',
             etiqueta: 'sin ninguna clase asignada',
             items: alertas.grupos_sin_clases,
+            enlaceDe:
+                route().has('admin.cargas.disponibilidad') &&
+                ((item) => route('admin.cargas.disponibilidad', { periodo: alertas.periodo_id, grupo: item.id })),
         },
         {
             clave: 'docentes',
@@ -112,7 +115,7 @@ function PanelPendientes({ alertas }) {
     );
 }
 
-function CategoriaPendiente({ icon, etiqueta, items }) {
+function CategoriaPendiente({ icon, etiqueta, items, enlaceDe }) {
     const [abierto, setAbierto] = useState(false);
 
     return (
@@ -134,11 +137,20 @@ function CategoriaPendiente({ icon, etiqueta, items }) {
             </button>
             {abierto && (
                 <ul className="max-h-48 space-y-1 overflow-y-auto px-5 pb-4 text-xs text-amber-700 dark:text-amber-500/80">
-                    {items.map((item) => (
-                        <li key={item} className="truncate">
-                            {item}
-                        </li>
-                    ))}
+                    {items.map((item) => {
+                        const texto = typeof item === 'string' ? item : item.texto;
+                        return (
+                            <li key={texto} className="truncate">
+                                {enlaceDe ? (
+                                    <Link href={enlaceDe(item)} className="underline decoration-dotted hover:text-amber-900 dark:hover:text-amber-300">
+                                        {texto}
+                                    </Link>
+                                ) : (
+                                    texto
+                                )}
+                            </li>
+                        );
+                    })}
                 </ul>
             )}
         </div>

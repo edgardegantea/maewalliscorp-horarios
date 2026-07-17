@@ -250,6 +250,18 @@ export default function Index({ periodos, carreras, asignaturas, docentes, perio
                                     Exportar a Excel
                                 </a>
                             )}
+                            {periodo && route().has('admin.cargas.disponibilidad') && (
+                                <Link href={route('admin.cargas.disponibilidad', { periodo })} className={`${secondaryLinkClasses} gap-1.5`}>
+                                    <Icon name="search" className="h-4 w-4" />
+                                    Buscar disponibilidad
+                                </Link>
+                            )}
+                            {periodo && route().has('admin.cargas.diagnostico') && (
+                                <Link href={route('admin.cargas.diagnostico', { periodo })} className={`${secondaryLinkClasses} gap-1.5`}>
+                                    <Icon name="chartBar" className="h-4 w-4" />
+                                    Diagnóstico de horarios
+                                </Link>
+                            )}
                             <Link
                                 href={puedeCrear ? route('admin.cargas.builder', { periodo, carrera }) : '#'}
                                 className={puedeCrear ? '' : 'pointer-events-none opacity-50'}
