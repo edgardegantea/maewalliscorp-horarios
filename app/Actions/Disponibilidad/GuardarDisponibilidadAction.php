@@ -23,6 +23,10 @@ class GuardarDisponibilidadAction
      *  - la suma de horas de disponibilidad de toda la semana no excede 40
      *    horas, tomando del sábado el módulo con más horas (el otro módulo
      *    ocurre en una semana distinta, así que no se suman ambos a la vez).
+     *  - el módulo 1 y el módulo 2 del sábado suman exactamente la misma
+     *    cantidad de horas (aunque el horario de reloj sea independiente):
+     *    si un docente tiene 5h en módulo 1, debe tener también 5h en módulo
+     *    2, repartidas en los bloques que se quiera.
      *
      * @param  array<int, array{dia_semana: int, modulo_sabatino: int|null, hora_inicio: string, hora_fin: string}>  $bloques
      */
@@ -105,6 +109,16 @@ class GuardarDisponibilidadAction
             }
         }
 
+        if ($minutosPorModuloSabado[1] !== $minutosPorModuloSabado[2]) {
+            throw ValidationException::withMessages([
+                'bloques' => sprintf(
+                    'El módulo 1 y el módulo 2 del sábado deben sumar la misma cantidad de horas (módulo 1: %sh, módulo 2: %sh). El horario puede ser distinto entre ambos, pero el total de horas debe ser idéntico.',
+                    $this->formatoHoras($minutosPorModuloSabado[1]),
+                    $this->formatoHoras($minutosPorModuloSabado[2]),
+                ),
+            ]);
+        }
+
         $totalMinutosSemana = array_sum($minutosPorDiaNoSabado) + max($minutosPorModuloSabado);
 
         if ($totalMinutosSemana > 40 * 60) {
@@ -119,5 +133,12 @@ class GuardarDisponibilidadAction
         [$h, $m] = array_map('intval', explode(':', $hora));
 
         return $h * 60 + $m;
+    }
+
+    private function formatoHoras(int $minutos): string
+    {
+        $horas = $minutos / 60;
+
+        return rtrim(rtrim(number_format($horas, 1), '0'), '.');
     }
 }

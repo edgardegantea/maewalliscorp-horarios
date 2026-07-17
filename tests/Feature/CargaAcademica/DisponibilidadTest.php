@@ -55,15 +55,25 @@ it('rechaza cuando la suma real de horas del día excede 8 horas, con o sin huec
     ]);
 })->throws(ValidationException::class);
 
-it('permite hasta 12 horas de disponibilidad el sábado', function () {
+it('permite hasta 12 horas de disponibilidad el sábado cuando ambos módulos suman lo mismo', function () {
     [$docente, $periodo] = docentePeriodo();
 
     app(GuardarDisponibilidadAction::class)->ejecutar($docente->id, $periodo->id, [
-        ['dia_semana' => 6, 'hora_inicio' => '07:00', 'hora_fin' => '19:00'],
+        ['dia_semana' => 6, 'modulo_sabatino' => 1, 'hora_inicio' => '07:00', 'hora_fin' => '19:00'],
+        ['dia_semana' => 6, 'modulo_sabatino' => 2, 'hora_inicio' => '08:00', 'hora_fin' => '20:00'],
     ]);
 
-    expect(DisponibilidadDocente::where('docente_id', $docente->id)->where('dia_semana', 6)->count())->toBe(1);
+    expect(DisponibilidadDocente::where('docente_id', $docente->id)->where('dia_semana', 6)->count())->toBe(2);
 });
+
+it('rechaza cuando el módulo 1 y el módulo 2 del sábado no suman las mismas horas', function () {
+    [$docente, $periodo] = docentePeriodo();
+
+    app(GuardarDisponibilidadAction::class)->ejecutar($docente->id, $periodo->id, [
+        ['dia_semana' => 6, 'modulo_sabatino' => 1, 'hora_inicio' => '07:00', 'hora_fin' => '19:00'],
+        ['dia_semana' => 6, 'modulo_sabatino' => 2, 'hora_inicio' => '08:00', 'hora_fin' => '14:00'],
+    ]);
+})->throws(ValidationException::class);
 
 it('rechaza cuando el rango total del sábado excede 12 horas', function () {
     [$docente, $periodo] = docentePeriodo();

@@ -112,6 +112,12 @@ export default function DisponibilidadEditor({
 
     const excedeSemana = minutosSemana > 40 * 60;
 
+    // El módulo 1 y el módulo 2 del sábado deben sumar exactamente las mismas
+    // horas (el horario de reloj sí puede ser independiente entre ambos).
+    const minutosModulo1 = minutosPorGrupo['6-1'] ?? 0;
+    const minutosModulo2 = minutosPorGrupo['6-2'] ?? 0;
+    const desbalanceSabado = minutosModulo1 !== minutosModulo2;
+
     const enviar = (e) => {
         e.preventDefault();
 
@@ -161,8 +167,9 @@ export default function DisponibilidadEditor({
                 La suma de horas de cada día (o, en sábado, de cada módulo) no puede exceder 8 horas (12
                 los sábados), y la suma de la semana no puede exceder 40 horas (el sábado cuenta una sola
                 vez, con el módulo de más horas). Puedes registrar varios bloques por día para turnos
-                partidos, y el módulo 1 y el módulo 2 del sábado pueden tener horarios de reloj
-                completamente distintos: ocurren en semanas distintas del semestre y no chocan entre sí.
+                partidos. El módulo 1 y el módulo 2 del sábado pueden tener horarios de reloj
+                completamente distintos (ocurren en semanas distintas del semestre y no chocan entre sí),
+                pero deben sumar exactamente la misma cantidad de horas entre los dos.
             </p>
 
             <div
@@ -178,6 +185,15 @@ export default function DisponibilidadEditor({
                     {excedeSemana ? ' — excede el límite' : ''}
                 </span>
             </div>
+
+            {desbalanceSabado && (
+                <div className="flex items-center justify-between rounded-md bg-red-50 p-3 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-400">
+                    <span className="font-medium">Módulo 1 y módulo 2 del sábado deben sumar las mismas horas</span>
+                    <span className="font-semibold">
+                        Módulo 1: {formatoHoras(minutosModulo1)}h · Módulo 2: {formatoHoras(minutosModulo2)}h
+                    </span>
+                </div>
+            )}
 
             <InputError message={errors.bloques} className="mt-2" />
 
@@ -242,7 +258,7 @@ export default function DisponibilidadEditor({
                 ))}
             </div>
 
-            <PrimaryButton disabled={processing || excedeSemana}>Guardar disponibilidad</PrimaryButton>
+            <PrimaryButton disabled={processing || excedeSemana || desbalanceSabado}>Guardar disponibilidad</PrimaryButton>
         </form>
     );
 }
