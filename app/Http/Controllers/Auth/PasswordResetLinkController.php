@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
@@ -23,29 +24,36 @@ class PasswordResetLinkController extends Controller
     }
 
     /**
-     * Handle an incoming password reset link request.
+     * Handle an incoming password reset link request. Acepta email o username
+     * (mismo criterio que LoginRequest) para resolver la cuenta del docente.
      *
      * @throws ValidationException
      */
     public function store(Request $request): RedirectResponse
     {
         $request->validate([
-            'email' => 'required|email',
+            'login' => ['required', 'string'],
         ]);
 
-        // We will send the password reset link to this user. Once we have attempted
-        // to send the link, we will examine the response then see the message we
-        // need to show to the user. Finally, we'll send out a proper response.
-        $status = Password::sendResetLink(
-            $request->only('email')
-        );
+        $login = $request->string('login')->value();
+        $campo = filter_var($login, FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
+
+        $usuario = User::where($campo, $login)->first();
+
+        if (! $usuario) {
+            throw ValidationException::withMessages([
+                'login' => trans('passwords.user'),
+            ]);
+        }
+
+        $status = Password::sendResetLink(['email' => $usuario->email]);
 
         if ($status == Password::RESET_LINK_SENT) {
             return back()->with('status', __($status));
         }
 
         throw ValidationException::withMessages([
-            'email' => [trans($status)],
+            'login' => [trans($status)],
         ]);
     }
 }

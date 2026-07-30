@@ -7,7 +7,7 @@ import { Head, useForm } from '@inertiajs/react';
 
 export default function ForgotPassword({ status }) {
     const { data, setData, post, processing, errors } = useForm({
-        email: '',
+        login: '',
     });
 
     const submit = (e) => {
@@ -23,8 +23,8 @@ export default function ForgotPassword({ status }) {
             <h1 className="text-lg font-semibold text-slate-900 dark:text-white">Recuperar contraseña</h1>
 
             <div className="mt-4 text-sm text-slate-600 dark:text-slate-400">
-                ¿Olvidaste tu contraseña? No hay problema. Escribe tu correo electrónico y te
-                enviaremos un enlace para restablecerla.
+                ¿Olvidaste tu contraseña? No hay problema. Escribe tu usuario o correo
+                electrónico y te enviaremos un enlace para crear una nueva.
             </div>
 
             {status && (
@@ -34,18 +34,19 @@ export default function ForgotPassword({ status }) {
             )}
 
             <form onSubmit={submit} className="mt-6">
-                <InputLabel htmlFor="email" value="Correo electrónico" />
+                <InputLabel htmlFor="login" value="Usuario o correo electrónico" />
                 <TextInput
-                    id="email"
-                    type="email"
-                    name="email"
-                    value={data.email}
+                    id="login"
+                    type="text"
+                    name="login"
+                    value={data.login}
                     className="mt-1 block w-full"
+                    autoComplete="username"
                     isFocused={true}
-                    onChange={(e) => setData('email', e.target.value)}
+                    onChange={(e) => setData('login', e.target.value)}
                 />
 
-                <InputError message={errors.email} className="mt-2" />
+                <InputError message={errors.login} className="mt-2" />
 
                 <div className="mt-4 flex items-center justify-end">
                     <PrimaryButton disabled={processing}>

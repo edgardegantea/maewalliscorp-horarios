@@ -18,6 +18,7 @@ const accesosCoordinador = [
 ];
 
 const accesosDocente = [
+    { name: 'docente.perfil.edit', titulo: 'Mi perfil', desc: 'Edita tus datos personales, profesionales y consulta tu historial académico.', icon: 'user' },
     { name: 'docente.disponibilidad.edit', titulo: 'Mi disponibilidad', desc: 'Registra tus bloques de disponibilidad por periodo.', icon: 'clock' },
     { name: 'docente.horario', titulo: 'Mi horario', desc: 'Consulta tu horario de clases asignado.', icon: 'calendar' },
 ];
