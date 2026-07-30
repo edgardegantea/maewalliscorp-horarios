@@ -17,6 +17,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -63,10 +64,10 @@ class DocenteController extends Controller
             $user = User::create([
                 'name' => $datos['name'],
                 'username' => $datos['username'],
-                'email' => $datos['email'],
-                'password' => Hash::make($datos['password']),
                 'role' => UserRole::Docente,
-                'email_verified_at' => now(),
+                // Contraseña inutilizable: el docente la define en su primer
+                // acceso (ver PasswordResetLinkController/NewPasswordController).
+                'password' => Hash::make(Str::random(40)),
             ]);
 
             return Docente::create([

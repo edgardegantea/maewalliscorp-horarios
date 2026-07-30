@@ -5,10 +5,9 @@ import TextInput from '@/Components/TextInput';
 import GuestLayout from '@/Layouts/GuestLayout';
 import { Head, useForm } from '@inertiajs/react';
 
-export default function ResetPassword({ token, email }) {
+export default function ResetPassword({ status }) {
     const { data, setData, post, processing, errors, reset } = useForm({
-        token: token,
-        email: email,
+        codigo: '',
         password: '',
         password_confirmation: '',
     });
@@ -25,27 +24,37 @@ export default function ResetPassword({ token, email }) {
         <GuestLayout>
             <Head title="Restablecer contraseña" />
 
-            <h1 className="mb-6 text-lg font-semibold text-slate-900 dark:text-white">Restablecer contraseña</h1>
+            <h1 className="mb-2 text-lg font-semibold text-slate-900 dark:text-white">Restablecer contraseña</h1>
+
+            <p className="mb-6 text-sm text-slate-600 dark:text-slate-400">
+                Ingresa el código de 6 dígitos que enviamos a tu correo y tu nueva contraseña.
+            </p>
+
+            {status && (
+                <div className="mb-4 text-sm font-medium text-emerald-600 dark:text-emerald-400">{status}</div>
+            )}
 
             <form onSubmit={submit}>
                 <div>
-                    <InputLabel htmlFor="email" value="Correo electrónico" />
+                    <InputLabel htmlFor="codigo" value="Código de verificación" />
 
                     <TextInput
-                        id="email"
-                        type="email"
-                        name="email"
-                        value={data.email}
+                        id="codigo"
+                        type="text"
+                        inputMode="numeric"
+                        name="codigo"
+                        value={data.codigo}
                         className="mt-1 block w-full"
-                        autoComplete="username"
-                        onChange={(e) => setData('email', e.target.value)}
+                        autoComplete="one-time-code"
+                        isFocused={true}
+                        onChange={(e) => setData('codigo', e.target.value)}
                     />
 
-                    <InputError message={errors.email} className="mt-2" />
+                    <InputError message={errors.codigo} className="mt-2" />
                 </div>
 
                 <div className="mt-4">
-                    <InputLabel htmlFor="password" value="Contraseña" />
+                    <InputLabel htmlFor="password" value="Nueva contraseña" />
 
                     <TextInput
                         id="password"
@@ -54,7 +63,6 @@ export default function ResetPassword({ token, email }) {
                         value={data.password}
                         className="mt-1 block w-full"
                         autoComplete="new-password"
-                        isFocused={true}
                         onChange={(e) => setData('password', e.target.value)}
                     />
 

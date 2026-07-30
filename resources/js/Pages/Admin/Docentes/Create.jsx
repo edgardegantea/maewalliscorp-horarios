@@ -8,8 +8,6 @@ export default function Create() {
     const { data, setData, post, processing, errors } = useForm({
         name: '',
         username: '',
-        email: '',
-        password: '',
         numero_empleado: '',
         telefono: '',
     });
@@ -32,6 +30,9 @@ export default function Create() {
                     ]}
                     title="Nuevo docente"
                 />
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                    El docente definirá su correo y contraseña en su primer acceso usando "¿Olvidaste tu contraseña?" en el login.
+                </p>
                 <Card>
                     <Form
                         data={data}
@@ -40,7 +41,7 @@ export default function Create() {
                         processing={processing}
                         onSubmit={submit}
                         cancelHref={route('admin.docentes.index')}
-                        showPassword
+                        showEmail={false}
                     />
                 </Card>
             </div>

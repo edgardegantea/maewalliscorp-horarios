@@ -4,7 +4,7 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
 import { Link } from '@inertiajs/react';
 
-export default function Form({ data, setData, errors, processing, onSubmit, cancelHref, showPassword = false }) {
+export default function Form({ data, setData, errors, processing, onSubmit, cancelHref, showEmail = true }) {
     return (
         <form onSubmit={onSubmit} className="space-y-6">
             <div>
@@ -30,29 +30,17 @@ export default function Form({ data, setData, errors, processing, onSubmit, canc
                 <InputError message={errors.username} className="mt-2" />
             </div>
 
-            <div>
-                <InputLabel htmlFor="email" value="Correo electrónico" />
-                <TextInput
-                    id="email"
-                    type="email"
-                    className="mt-1 block w-full"
-                    value={data.email}
-                    onChange={(e) => setData('email', e.target.value)}
-                />
-                <InputError message={errors.email} className="mt-2" />
-            </div>
-
-            {showPassword && (
+            {showEmail && (
                 <div>
-                    <InputLabel htmlFor="password" value="Contraseña inicial" />
+                    <InputLabel htmlFor="email" value="Correo electrónico (opcional)" />
                     <TextInput
-                        id="password"
-                        type="password"
+                        id="email"
+                        type="email"
                         className="mt-1 block w-full"
-                        value={data.password}
-                        onChange={(e) => setData('password', e.target.value)}
+                        value={data.email ?? ''}
+                        onChange={(e) => setData('email', e.target.value)}
                     />
-                    <InputError message={errors.password} className="mt-2" />
+                    <InputError message={errors.email} className="mt-2" />
                 </div>
             )}
 

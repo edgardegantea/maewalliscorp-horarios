@@ -56,6 +56,11 @@ class User extends Authenticatable
         return $this->hasOne(Docente::class);
     }
 
+    public function codigoVerificacion(): HasOne
+    {
+        return $this->hasOne(CodigoVerificacion::class);
+    }
+
     public function carrerasCoordinadas(): BelongsToMany
     {
         return $this->belongsToMany(Carrera::class, 'coordinador_carrera');
