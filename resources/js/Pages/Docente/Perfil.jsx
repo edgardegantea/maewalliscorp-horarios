@@ -10,6 +10,7 @@ import Tabs from '@/Components/ui/Tabs';
 import { EmptyRow, TBody, TD, TH, THead, TR, Table } from '@/Components/ui/Table';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router, useForm } from '@inertiajs/react';
+import { useMemo, useState } from 'react';
 
 // Años descendentes desde el actual hasta 1970, para los <select> de periodo.
 function rangoAnios() {
@@ -40,6 +41,8 @@ export default function Perfil({
     productosAcademicos,
     gradosAcademicos,
     tiposProductoAcademico,
+    historialAsignaturas,
+    catalogoCarreras,
 }) {
     return (
         <AuthenticatedLayout header={<h2 className="text-base font-semibold text-slate-900 dark:text-white">Mi perfil</h2>}>
@@ -69,7 +72,12 @@ export default function Perfil({
                 >
                     <DatosPersonales docente={docente} />
                     <DatosProfesionales docente={docente} gradosAcademicos={gradosAcademicos} />
-                    <HistorialAcademico carreras={carreras} asignaturas={asignaturas} />
+                    <HistorialAcademico
+                        carreras={carreras}
+                        asignaturas={asignaturas}
+                        historialAsignaturas={historialAsignaturas}
+                        catalogoCarreras={catalogoCarreras}
+                    />
                     <ExperienciaAdicional experiencias={experiencias} />
                     <Proyectos proyectos={proyectos} />
                     <ProductosAcademicos productos={productosAcademicos} tipos={tiposProductoAcademico} />
@@ -242,57 +250,226 @@ function DatosProfesionales({ docente, gradosAcademicos }) {
     );
 }
 
-function HistorialAcademico({ carreras, asignaturas }) {
-    return (
-        <div className="grid gap-6 lg:grid-cols-2">
-            <Card padded={false}>
-                <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-                    <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Carreras asignadas</h3>
-                </div>
-                <Table>
-                    <THead>
-                        <TR>
-                            <TH>Carrera</TH>
-                            <TH>Periodo</TH>
-                        </TR>
-                    </THead>
-                    <TBody>
-                        {carreras.length === 0 && <EmptyRow colSpan={2}>Sin carreras asignadas.</EmptyRow>}
-                        {carreras.map((c, i) => (
-                            <TR key={i}>
-                                <TD>{c.carrera}</TD>
-                                <TD>{c.periodo}</TD>
-                            </TR>
-                        ))}
-                    </TBody>
-                </Table>
-            </Card>
+const PERIODOS = [
+    { value: 'enero-junio', label: 'Enero - Junio' },
+    { value: 'agosto-diciembre', label: 'Agosto - Diciembre' },
+];
 
-            <Card padded={false}>
-                <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-                    <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Asignaturas impartidas</h3>
-                </div>
-                <Table>
-                    <THead>
-                        <TR>
-                            <TH>Asignatura</TH>
-                            <TH>Carrera</TH>
-                            <TH>Periodo</TH>
-                        </TR>
-                    </THead>
-                    <TBody>
-                        {asignaturas.length === 0 && <EmptyRow colSpan={3}>Sin asignaturas registradas.</EmptyRow>}
-                        {asignaturas.map((a, i) => (
-                            <TR key={i}>
-                                <TD>{a.asignatura}</TD>
-                                <TD>{a.carrera}</TD>
-                                <TD>{a.periodo}</TD>
+function HistorialAcademico({ carreras, asignaturas, historialAsignaturas, catalogoCarreras }) {
+    return (
+        <div className="space-y-6">
+            <div className="grid gap-6 lg:grid-cols-2">
+                <Card padded={false}>
+                    <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+                        <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Carreras asignadas</h3>
+                    </div>
+                    <Table>
+                        <THead>
+                            <TR>
+                                <TH>Carrera</TH>
+                                <TH>Periodo</TH>
                             </TR>
-                        ))}
-                    </TBody>
-                </Table>
-            </Card>
+                        </THead>
+                        <TBody>
+                            {carreras.length === 0 && <EmptyRow colSpan={2}>Sin carreras asignadas.</EmptyRow>}
+                            {carreras.map((c, i) => (
+                                <TR key={i}>
+                                    <TD>{c.carrera}</TD>
+                                    <TD>{c.periodo}</TD>
+                                </TR>
+                            ))}
+                        </TBody>
+                    </Table>
+                </Card>
+
+                <Card padded={false}>
+                    <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+                        <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Asignaturas impartidas</h3>
+                    </div>
+                    <Table>
+                        <THead>
+                            <TR>
+                                <TH>Asignatura</TH>
+                                <TH>Carrera</TH>
+                                <TH>Periodo</TH>
+                            </TR>
+                        </THead>
+                        <TBody>
+                            {asignaturas.length === 0 && <EmptyRow colSpan={3}>Sin asignaturas registradas.</EmptyRow>}
+                            {asignaturas.map((a, i) => (
+                                <TR key={i}>
+                                    <TD>{a.asignatura}</TD>
+                                    <TD>{a.carrera}</TD>
+                                    <TD>{a.periodo}</TD>
+                                </TR>
+                            ))}
+                        </TBody>
+                    </Table>
+                </Card>
+            </div>
+
+            <HistorialAsignaturasManual historial={historialAsignaturas} catalogoCarreras={catalogoCarreras} />
         </div>
+    );
+}
+
+function HistorialAsignaturasManual({ historial, catalogoCarreras }) {
+    const { data, setData, post, processing, errors, reset } = useForm({
+        carrera_id: '',
+        asignatura_id: '',
+        anio: '',
+        periodo: '',
+        comentario: '',
+    });
+
+    const asignaturasDisponibles = useMemo(() => {
+        const carrera = catalogoCarreras.find((c) => String(c.id) === String(data.carrera_id));
+        return carrera?.asignaturas ?? [];
+    }, [catalogoCarreras, data.carrera_id]);
+
+    const cambiarCarrera = (value) => {
+        setData((prev) => ({ ...prev, carrera_id: value, asignatura_id: '' }));
+    };
+
+    const submit = (e) => {
+        e.preventDefault();
+        post(route('docente.perfil.historial-asignaturas.store'), {
+            preserveScroll: true,
+            onSuccess: () => reset(),
+        });
+    };
+
+    const eliminar = (item) => {
+        if (confirm('¿Eliminar este registro del historial?')) {
+            router.delete(route('docente.perfil.historial-asignaturas.destroy', item.id), { preserveScroll: true });
+        }
+    };
+
+    return (
+        <Card>
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                Asignaturas impartidas en semestres y años anteriores
+            </h3>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                Registra manualmente asignaturas que impartiste en periodos anteriores y que no aparecen arriba.
+            </p>
+
+            <ul className="mt-4 divide-y divide-slate-100 dark:divide-slate-800">
+                {historial.length === 0 && (
+                    <li className="py-4 text-sm text-slate-400 dark:text-slate-500">Sin registros manuales.</li>
+                )}
+                {historial.map((item) => (
+                    <li key={item.id} className="flex items-start justify-between gap-4 py-4">
+                        <div>
+                            <p className="text-sm font-medium text-slate-900 dark:text-white">
+                                {item.asignatura.nombre} — {item.carrera.nombre}
+                            </p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                {PERIODOS.find((p) => p.value === item.periodo)?.label ?? item.periodo} {item.anio}
+                            </p>
+                            {item.comentario && (
+                                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{item.comentario}</p>
+                            )}
+                        </div>
+                        <DangerButton type="button" onClick={() => eliminar(item)}>
+                            Eliminar
+                        </DangerButton>
+                    </li>
+                ))}
+            </ul>
+
+            <form onSubmit={submit} className="mt-6 grid gap-4 border-t border-slate-200 pt-6 sm:grid-cols-2 dark:border-slate-800">
+                <div>
+                    <InputLabel htmlFor="carrera_id" value="Carrera" />
+                    <SelectInput
+                        id="carrera_id"
+                        className="mt-1 block w-full"
+                        value={data.carrera_id}
+                        onChange={(e) => cambiarCarrera(e.target.value)}
+                    >
+                        <option value="">Selecciona una opción</option>
+                        {catalogoCarreras.map((c) => (
+                            <option key={c.id} value={c.id}>
+                                {c.nombre}
+                            </option>
+                        ))}
+                    </SelectInput>
+                    <InputError message={errors.carrera_id} className="mt-1" />
+                </div>
+
+                <div>
+                    <InputLabel htmlFor="asignatura_id" value="Asignatura" />
+                    <SelectInput
+                        id="asignatura_id"
+                        className="mt-1 block w-full"
+                        value={data.asignatura_id}
+                        disabled={!data.carrera_id}
+                        onChange={(e) => setData('asignatura_id', e.target.value)}
+                    >
+                        <option value="">
+                            {data.carrera_id ? 'Selecciona una opción' : 'Primero elige una carrera'}
+                        </option>
+                        {asignaturasDisponibles.map((a) => (
+                            <option key={a.id} value={a.id}>
+                                {a.nombre}
+                            </option>
+                        ))}
+                    </SelectInput>
+                    <InputError message={errors.asignatura_id} className="mt-1" />
+                </div>
+
+                <div>
+                    <InputLabel htmlFor="anio_historial" value="Año" />
+                    <SelectInput
+                        id="anio_historial"
+                        className="mt-1 block w-full"
+                        value={data.anio}
+                        onChange={(e) => setData('anio', e.target.value)}
+                    >
+                        <option value="">Selecciona un año</option>
+                        {ANIOS.map((a) => (
+                            <option key={a} value={a}>
+                                {a}
+                            </option>
+                        ))}
+                    </SelectInput>
+                    <InputError message={errors.anio} className="mt-1" />
+                </div>
+
+                <div>
+                    <InputLabel htmlFor="periodo" value="Periodo" />
+                    <SelectInput
+                        id="periodo"
+                        className="mt-1 block w-full"
+                        value={data.periodo}
+                        onChange={(e) => setData('periodo', e.target.value)}
+                    >
+                        <option value="">Selecciona una opción</option>
+                        {PERIODOS.map((p) => (
+                            <option key={p.value} value={p.value}>
+                                {p.label}
+                            </option>
+                        ))}
+                    </SelectInput>
+                    <InputError message={errors.periodo} className="mt-1" />
+                </div>
+
+                <div className="sm:col-span-2">
+                    <InputLabel htmlFor="comentario" value="Comentario (opcional)" />
+                    <TextInput
+                        id="comentario"
+                        className="mt-1 block w-full"
+                        value={data.comentario}
+                        onChange={(e) => setData('comentario', e.target.value)}
+                    />
+                    <InputError message={errors.comentario} className="mt-1" />
+                </div>
+
+                <div className="sm:col-span-2 flex justify-end">
+                    <PrimaryButton disabled={processing}>Agregar al historial</PrimaryButton>
+                </div>
+            </form>
+        </Card>
     );
 }
 

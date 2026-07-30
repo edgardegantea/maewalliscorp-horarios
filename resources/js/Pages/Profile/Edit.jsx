@@ -10,6 +10,7 @@ import UpdateProfileInformationForm from './Partials/UpdateProfileInformationFor
 export default function Edit({ mustVerifyEmail, status, twoFactorEnabled, twoFactorPendiente }) {
     const user = usePage().props.auth.user;
     const puedeUsarDosFactores = user.role === 'admin' || user.role === 'coordinador';
+    const puedeEliminarCuenta = user.role !== 'docente';
 
     return (
         <AuthenticatedLayout header={<h2 className="text-base font-semibold text-slate-900 dark:text-white">Mi perfil</h2>}>
@@ -32,9 +33,11 @@ export default function Edit({ mustVerifyEmail, status, twoFactorEnabled, twoFac
                     </Card>
                 )}
 
-                <Card>
-                    <DeleteUserForm />
-                </Card>
+                {puedeEliminarCuenta && (
+                    <Card>
+                        <DeleteUserForm />
+                    </Card>
+                )}
             </div>
         </AuthenticatedLayout>
     );

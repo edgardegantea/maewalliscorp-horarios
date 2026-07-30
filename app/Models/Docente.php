@@ -59,4 +59,9 @@ class Docente extends Model
     {
         return $this->hasMany(ProductoAcademicoDocente::class);
     }
+
+    public function historialAsignaturas(): HasMany
+    {
+        return $this->hasMany(HistorialAsignaturaImpartida::class);
+    }
 }

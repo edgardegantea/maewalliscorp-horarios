@@ -7,6 +7,7 @@ use App\Enums\TipoProductoAcademico;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Docente\PerfilUpdateRequest;
 use App\Models\CargaAcademica;
+use App\Models\Carrera;
 use App\Models\DocenteCarrera;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -65,6 +66,14 @@ class PerfilController extends Controller
                 fn (TipoProductoAcademico $t) => ['value' => $t->value, 'label' => $t->label()],
                 TipoProductoAcademico::cases()
             ),
+            'historialAsignaturas' => $docente->historialAsignaturas()
+                ->with(['carrera', 'asignatura'])
+                ->orderByDesc('anio')
+                ->get(),
+            'catalogoCarreras' => Carrera::where('activo', true)
+                ->with(['asignaturas' => fn ($q) => $q->orderBy('nombre')])
+                ->orderBy('nombre')
+                ->get(['id', 'nombre']),
         ]);
     }
 

@@ -47,6 +47,8 @@ class ProfileController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
+        abort_if($request->user()->isDocente(), 403, 'Los docentes no pueden eliminar su cuenta.');
+
         $request->validate([
             'password' => ['required', 'current_password'],
         ]);
