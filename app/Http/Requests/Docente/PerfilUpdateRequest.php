@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Docente;
 
+use App\Enums\GradoAcademico;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -23,7 +24,7 @@ class PerfilUpdateRequest extends FormRequest
             'curp' => ['nullable', 'string', 'max:18', Rule::unique('docentes', 'curp')->ignore($docente)],
             'rfc' => ['nullable', 'string', 'max:13', Rule::unique('docentes', 'rfc')->ignore($docente)],
 
-            'grado_academico' => ['nullable', 'string', 'max:255'],
+            'grado_academico' => ['nullable', Rule::enum(GradoAcademico::class)],
             'cedula_profesional' => ['nullable', 'string', 'max:255'],
             'especialidad' => ['nullable', 'string', 'max:255'],
             'anios_experiencia' => ['nullable', 'integer', 'min:0', 'max:100'],

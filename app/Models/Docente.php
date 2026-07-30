@@ -49,4 +49,14 @@ class Docente extends Model
     {
         return $this->hasMany(ExperienciaDocente::class);
     }
+
+    public function proyectos(): HasMany
+    {
+        return $this->hasMany(ProyectoDocente::class);
+    }
+
+    public function productosAcademicos(): HasMany
+    {
+        return $this->hasMany(ProductoAcademicoDocente::class);
+    }
 }

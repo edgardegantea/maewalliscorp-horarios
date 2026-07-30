@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Docente;
 
+use App\Enums\GradoAcademico;
+use App\Enums\TipoProductoAcademico;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Docente\PerfilUpdateRequest;
 use App\Models\CargaAcademica;
@@ -53,6 +55,16 @@ class PerfilController extends Controller
             'carreras' => $carreras,
             'asignaturas' => $asignaturas,
             'experiencias' => $docente->experiencias()->orderByDesc('id')->get(),
+            'proyectos' => $docente->proyectos()->orderByDesc('anio_inicio')->get(),
+            'productosAcademicos' => $docente->productosAcademicos()->orderByDesc('anio')->get(),
+            'gradosAcademicos' => array_map(
+                fn (GradoAcademico $g) => ['value' => $g->value, 'label' => $g->label()],
+                GradoAcademico::cases()
+            ),
+            'tiposProductoAcademico' => array_map(
+                fn (TipoProductoAcademico $t) => ['value' => $t->value, 'label' => $t->label()],
+                TipoProductoAcademico::cases()
+            ),
         ]);
     }
 
