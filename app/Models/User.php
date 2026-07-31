@@ -66,6 +66,31 @@ class User extends Authenticatable
         return $this->belongsToMany(Carrera::class, 'coordinador_carrera');
     }
 
+    public function roles(): BelongsToMany
+    {
+        return $this->belongsToMany(Role::class);
+    }
+
+    public function gruposUsuarios(): BelongsToMany
+    {
+        return $this->belongsToMany(GrupoUsuario::class, 'grupo_usuario_user');
+    }
+
+    /**
+     * El admin (superadmin) siempre tiene todos los permisos. Para el resto,
+     * se revisa si alguno de sus roles personalizados incluye la clave dada.
+     */
+    public function tienePermiso(string $clave): bool
+    {
+        if ($this->isAdmin()) {
+            return true;
+        }
+
+        return $this->roles->contains(
+            fn (Role $role) => $role->permissions->contains('clave', $clave)
+        );
+    }
+
     public function isAdmin(): bool
     {
         return $this->role === UserRole::Admin;

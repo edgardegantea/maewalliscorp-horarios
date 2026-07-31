@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\UserRole;
+use App\Exports\DocenteExport;
 use App\Http\Controllers\Concerns\ImportsCsv;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\DocenteStoreRequest;
@@ -13,6 +14,8 @@ use App\Models\Docente;
 use App\Models\PeriodoEscolar;
 use App\Models\RegistroActividad;
 use App\Models\User;
+use App\Support\PerfilDocenteData;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -20,6 +23,8 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class DocenteController extends Controller
 {
@@ -30,14 +35,7 @@ class DocenteController extends Controller
         $busqueda = $request->string('q')->toString() ?: null;
         $carreraId = $request->integer('carrera') ?: null;
 
-        $docentes = Docente::with(['user', 'docenteCarreras.carrera', 'docenteCarreras.periodoEscolar'])
-            ->when($busqueda, fn ($q) => $q->where(fn ($q2) => $q2
-                ->where('numero_empleado', 'ilike', "%{$busqueda}%")
-                ->orWhereHas('user', fn ($q3) => $q3
-                    ->where('name', 'ilike', "%{$busqueda}%")
-                    ->orWhere('username', 'ilike', "%{$busqueda}%")
-                    ->orWhere('email', 'ilike', "%{$busqueda}%"))))
-            ->when($carreraId, fn ($q) => $q->whereHas('docenteCarreras', fn ($q2) => $q2->where('carrera_id', $carreraId)))
+        $docentes = $this->consultaFiltrada($busqueda, $carreraId)
             ->orderBy('id')
             ->get();
 
@@ -80,6 +78,16 @@ class DocenteController extends Controller
         RegistroActividad::registrar($request->user()->id, 'crear', 'docente', $docente->id, "Creó al docente {$datos['name']}");
 
         return redirect()->route('admin.docentes.index')->with('success', 'Docente creado.');
+    }
+
+    public function show(Docente $docente): Response
+    {
+        $docente->load('user');
+
+        return Inertia::render(
+            'Admin/Docentes/Show',
+            PerfilDocenteData::paraInertia($docente, $docente->user)
+        );
     }
 
     public function edit(Docente $docente): Response
@@ -130,5 +138,30 @@ class DocenteController extends Controller
     public function import(Request $request): RedirectResponse
     {
         return $this->ejecutarImportacion($request, new DocenteImport, 'admin.docentes.index');
+    }
+
+    public function export(Request $request): BinaryFileResponse
+    {
+        $busqueda = $request->string('q')->toString() ?: null;
+        $carreraId = $request->integer('carrera') ?: null;
+
+        $docentes = $this->consultaFiltrada($busqueda, $carreraId)->orderBy('id')->get();
+
+        return Excel::download(new DocenteExport($docentes), 'docentes.xlsx');
+    }
+
+    /**
+     * @return Builder<Docente>
+     */
+    private function consultaFiltrada(?string $busqueda, ?int $carreraId): Builder
+    {
+        return Docente::with(['user', 'docenteCarreras.carrera', 'docenteCarreras.periodoEscolar'])
+            ->when($busqueda, fn ($q) => $q->where(fn ($q2) => $q2
+                ->where('numero_empleado', 'ilike', "%{$busqueda}%")
+                ->orWhereHas('user', fn ($q3) => $q3
+                    ->where('name', 'ilike', "%{$busqueda}%")
+                    ->orWhere('username', 'ilike', "%{$busqueda}%")
+                    ->orWhere('email', 'ilike', "%{$busqueda}%"))))
+            ->when($carreraId, fn ($q) => $q->whereHas('docenteCarreras', fn ($q2) => $q2->where('carrera_id', $carreraId)));
     }
 }

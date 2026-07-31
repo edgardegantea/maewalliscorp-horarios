@@ -20,6 +20,9 @@ const adminLinks = [
     { name: 'admin.reportes.utilizacion-aulas', label: 'Utilización de aulas', icon: 'chartBar' },
     { name: 'admin.dias-no-laborables.index', label: 'Días no laborables', icon: 'calendar' },
     { name: 'admin.auditoria.index', label: 'Auditoría', icon: 'listBullet' },
+    { name: 'admin.usuarios.index', label: 'Usuarios', icon: 'users' },
+    { name: 'admin.roles.index', label: 'Roles y permisos', icon: 'user' },
+    { name: 'admin.grupos-usuarios.index', label: 'Grupos de usuarios', icon: 'user' },
 ];
 
 const coordinadorLinks = [

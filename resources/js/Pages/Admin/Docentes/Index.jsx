@@ -1,5 +1,6 @@
 import ImportCsvButton from '@/Components/ImportCsvButton';
 import PrimaryButton from '@/Components/PrimaryButton';
+import SecondaryButton from '@/Components/SecondaryButton';
 import SelectInput from '@/Components/SelectInput';
 import TextInput from '@/Components/TextInput';
 import Card from '@/Components/ui/Card';
@@ -39,6 +40,9 @@ export default function Index({ docentes, carreras, filtros }) {
                     description="Cuentas de acceso y perfil de los docentes de la institución."
                     actions={
                         <>
+                            <a href={route('admin.docentes.export', filtros)}>
+                                <SecondaryButton>Exportar</SecondaryButton>
+                            </a>
                             <ImportCsvButton
                                 action={route('admin.docentes.import')}
                                 columnas={['name', 'username', 'email', 'numero_empleado (opcional)', 'telefono (opcional)']}
@@ -124,6 +128,12 @@ export default function Index({ docentes, carreras, filtros }) {
                                     </TD>
                                     <TD align="right">
                                         <div className="flex justify-end gap-4">
+                                            <Link
+                                                href={route('admin.docentes.show', docente.id)}
+                                                className="font-medium text-slate-600 hover:text-slate-800 dark:text-slate-300 dark:hover:text-slate-100"
+                                            >
+                                                Ver
+                                            </Link>
                                             <Link
                                                 href={route('admin.docentes.edit', docente.id)}
                                                 className="font-medium text-indigo-600 hover:text-indigo-800"

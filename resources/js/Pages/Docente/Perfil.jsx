@@ -9,6 +9,8 @@ import PageHeader from '@/Components/ui/PageHeader';
 import Tabs from '@/Components/ui/Tabs';
 import { EmptyRow, TBody, TD, TH, THead, TR, Table } from '@/Components/ui/Table';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import UpdatePasswordForm from '@/Pages/Profile/Partials/UpdatePasswordForm';
+import UpdateProfileInformationForm from '@/Pages/Profile/Partials/UpdateProfileInformationForm';
 import { Head, router, useForm } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 
@@ -52,7 +54,7 @@ export default function Perfil({
                 <PageHeader
                     breadcrumbs={[{ label: 'Dashboard', href: route('dashboard') }, { label: 'Mi perfil' }]}
                     title="Mi perfil"
-                    description="Edita tus datos personales y profesionales, y consulta tu historial académico."
+                    description="Edita tu cuenta, datos personales y profesionales, y consulta tu historial académico."
                 />
 
                 <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -62,6 +64,7 @@ export default function Perfil({
 
                 <Tabs
                     tabs={[
+                        'Cuenta',
                         'Datos personales',
                         'Datos profesionales',
                         'Historial académico',
@@ -70,6 +73,7 @@ export default function Perfil({
                         'Productos académicos',
                     ]}
                 >
+                    <Cuenta />
                     <DatosPersonales docente={docente} />
                     <DatosProfesionales docente={docente} gradosAcademicos={gradosAcademicos} />
                     <HistorialAcademico
@@ -84,6 +88,19 @@ export default function Perfil({
                 </Tabs>
             </div>
         </AuthenticatedLayout>
+    );
+}
+
+function Cuenta() {
+    return (
+        <div className="space-y-6">
+            <Card>
+                <UpdateProfileInformationForm mustVerifyEmail={false} />
+            </Card>
+            <Card>
+                <UpdatePasswordForm />
+            </Card>
+        </div>
     );
 }
 

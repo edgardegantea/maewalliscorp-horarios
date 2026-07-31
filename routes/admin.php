@@ -16,8 +16,11 @@ use App\Http\Controllers\Admin\DisponibilidadDocenteController;
 use App\Http\Controllers\Admin\DocenteCarreraController;
 use App\Http\Controllers\Admin\DocenteController;
 use App\Http\Controllers\Admin\GrupoController;
+use App\Http\Controllers\Admin\GrupoUsuarioController;
 use App\Http\Controllers\Admin\PeriodoEscolarController;
 use App\Http\Controllers\Admin\ReporteController;
+use App\Http\Controllers\Admin\RoleController;
+use App\Http\Controllers\Admin\UsuarioController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('admin')->name('admin.')->group(function () {
@@ -35,6 +38,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         Route::resource('docentes', DocenteController::class)->except('show');
         Route::post('docentes-importar', [DocenteController::class, 'import'])->name('docentes.import');
+        Route::get('docentes-exportar', [DocenteController::class, 'export'])->name('docentes.export');
+        Route::get('docentes/{docente}', [DocenteController::class, 'show'])->name('docentes.show');
         Route::post('docentes/{docente}/carreras', [DocenteCarreraController::class, 'store'])->name('docentes.carreras.store');
         Route::delete('docentes/{docente}/carreras/{docenteCarrera}', [DocenteCarreraController::class, 'destroy'])->name('docentes.carreras.destroy');
         Route::get('docentes/{docente}/disponibilidad/{periodo}', [DisponibilidadDocenteController::class, 'edit'])->name('docentes.disponibilidad.edit');
@@ -54,6 +59,14 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::resource('dias-no-laborables', DiaNoLaborableController::class)
             ->only(['index', 'store', 'destroy'])
             ->parameters(['dias-no-laborables' => 'diaNoLaborable']);
+
+        Route::resource('roles', RoleController::class)->except('show');
+        Route::resource('grupos-usuarios', GrupoUsuarioController::class)
+            ->except('show')
+            ->parameters(['grupos-usuarios' => 'grupoUsuario']);
+        Route::get('usuarios', [UsuarioController::class, 'index'])->name('usuarios.index');
+        Route::get('usuarios/{usuario}/editar', [UsuarioController::class, 'edit'])->name('usuarios.edit');
+        Route::put('usuarios/{usuario}', [UsuarioController::class, 'update'])->name('usuarios.update');
     });
 
     // Recursos de carrera: administrador general o coordinador de la(s) carrera(s)
