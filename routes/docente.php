@@ -11,8 +11,8 @@ use App\Http\Controllers\Docente\ProyectoController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('role:docente')->prefix('mi')->name('docente.')->group(function () {
+    // Solo lectura: la disponibilidad del docente la captura el admin/coordinador.
     Route::get('disponibilidad', [DisponibilidadController::class, 'edit'])->name('disponibilidad.edit');
-    Route::put('disponibilidad', [DisponibilidadController::class, 'update'])->name('disponibilidad.update');
     Route::get('horario', MiHorarioController::class)->name('horario');
     Route::put('horario/{carga}/estado', [CargaEstadoController::class, 'update'])->name('horario.estado');
 

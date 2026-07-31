@@ -2,17 +2,19 @@
 
 namespace App\Http\Controllers\Docente;
 
-use App\Actions\Disponibilidad\GuardarDisponibilidadAction;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\DisponibilidadRequest;
 use App\Models\DiaNoLaborable;
 use App\Models\DisponibilidadDocente;
 use App\Models\PeriodoEscolar;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
+/**
+ * Vista de solo lectura: el docente consulta su disponibilidad, pero solo el
+ * admin/coordinador puede capturarla o modificarla (ver
+ * Admin\DisponibilidadDocenteController).
+ */
 class DisponibilidadController extends Controller
 {
     public function edit(Request $request): Response
@@ -39,21 +41,6 @@ class DisponibilidadController extends Controller
                     ->get(['fecha', 'descripcion'])
                 : [],
         ]);
-    }
-
-    public function update(DisponibilidadRequest $request, GuardarDisponibilidadAction $accion): RedirectResponse
-    {
-        $docente = $request->user()->docente;
-
-        abort_unless($docente, 403);
-
-        $datos = $request->validated();
-
-        $accion->ejecutar($docente->id, (int) $datos['periodo_escolar_id'], $datos['bloques']);
-
-        return redirect()
-            ->route('docente.disponibilidad.edit', ['periodo' => $datos['periodo_escolar_id']])
-            ->with('success', 'Disponibilidad actualizada.');
     }
 
     private function periodoSeleccionado(Request $request): ?PeriodoEscolar

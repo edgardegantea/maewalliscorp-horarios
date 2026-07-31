@@ -64,6 +64,7 @@ export default function DisponibilidadEditor({
     bloques,
     onPeriodoChange,
     extraFields = {},
+    readOnly = false,
 }) {
     const inicial = useMemo(() => agrupar(bloques), [bloques]);
 
@@ -120,6 +121,10 @@ export default function DisponibilidadEditor({
 
     const enviar = (e) => {
         e.preventDefault();
+
+        if (readOnly) {
+            return;
+        }
 
         transform((form) => {
             const bloquesPlanos = [];
@@ -208,13 +213,15 @@ export default function DisponibilidadEditor({
                                         {formatoHoras(minutosPorGrupo[grupo.clave])}h
                                     </span>
                                 )}
-                                <button
-                                    type="button"
-                                    onClick={() => agregarBloque(grupo.clave)}
-                                    className="text-sm text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
-                                >
-                                    + Agregar bloque
-                                </button>
+                                {!readOnly && (
+                                    <button
+                                        type="button"
+                                        onClick={() => agregarBloque(grupo.clave)}
+                                        className="text-sm text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
+                                    >
+                                        + Agregar bloque
+                                    </button>
+                                )}
                             </div>
                         </div>
 
@@ -230,7 +237,8 @@ export default function DisponibilidadEditor({
                                         min="07:00"
                                         max="21:00"
                                         step="3600"
-                                        className="rounded-md border-slate-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:[color-scheme:dark]"
+                                        disabled={readOnly}
+                                        className="rounded-md border-slate-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:[color-scheme:dark] dark:disabled:bg-slate-800/50 dark:disabled:text-slate-500"
                                         value={bloque.hora_inicio}
                                         onChange={(e) => cambiarBloque(grupo.clave, indice, 'hora_inicio', e.target.value)}
                                     />
@@ -240,17 +248,20 @@ export default function DisponibilidadEditor({
                                         min="07:00"
                                         max="21:00"
                                         step="3600"
-                                        className="rounded-md border-slate-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:[color-scheme:dark]"
+                                        disabled={readOnly}
+                                        className="rounded-md border-slate-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:[color-scheme:dark] dark:disabled:bg-slate-800/50 dark:disabled:text-slate-500"
                                         value={bloque.hora_fin}
                                         onChange={(e) => cambiarBloque(grupo.clave, indice, 'hora_fin', e.target.value)}
                                     />
-                                    <button
-                                        type="button"
-                                        onClick={() => quitarBloque(grupo.clave, indice)}
-                                        className="text-sm text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                                    >
-                                        Quitar
-                                    </button>
+                                    {!readOnly && (
+                                        <button
+                                            type="button"
+                                            onClick={() => quitarBloque(grupo.clave, indice)}
+                                            className="text-sm text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                                        >
+                                            Quitar
+                                        </button>
+                                    )}
                                 </div>
                             ))}
                         </div>
@@ -258,7 +269,11 @@ export default function DisponibilidadEditor({
                 ))}
             </div>
 
-            <PrimaryButton disabled={processing || excedeSemana || desbalanceSabado}>Guardar disponibilidad</PrimaryButton>
+            {!readOnly && (
+                <PrimaryButton disabled={processing || excedeSemana || desbalanceSabado}>
+                    Guardar disponibilidad
+                </PrimaryButton>
+            )}
         </form>
     );
 }
