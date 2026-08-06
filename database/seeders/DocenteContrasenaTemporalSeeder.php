@@ -18,6 +18,9 @@ class DocenteContrasenaTemporalSeeder extends Seeder
     public function run(): void
     {
         User::where('role', UserRole::Docente)
-            ->update(['password' => Hash::make(self::CONTRASENA_TEMPORAL)]);
+            ->update([
+                'password' => Hash::make(self::CONTRASENA_TEMPORAL),
+                'password_temporal' => true,
+            ]);
     }
 }

@@ -14,7 +14,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['name', 'username', 'email', 'password', 'role'])]
+#[Fillable(['name', 'username', 'email', 'password', 'password_temporal', 'role'])]
 #[Hidden(['password', 'remember_token', 'two_factor_secret'])]
 class User extends Authenticatable
 {
@@ -31,6 +31,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'password_temporal' => 'boolean',
             'role' => UserRole::class,
             'two_factor_secret' => 'encrypted',
             'two_factor_confirmed_at' => 'datetime',
@@ -133,6 +134,15 @@ class User extends Authenticatable
         }
 
         return true;
+    }
+
+    /**
+     * Igual que puedeSerEditadoPor(), pero nadie puede impersonarse a sí
+     * mismo (no tendría sentido: ya tiene su propia sesión).
+     */
+    public function puedeSerImpersonadoPor(User $actor): bool
+    {
+        return ! $actor->is($this) && $this->puedeSerEditadoPor($actor);
     }
 
     /**

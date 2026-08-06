@@ -98,14 +98,37 @@ function SidebarContent({ links, onNavigate }) {
     );
 }
 
+function BannerImpersonacion({ impersonando }) {
+    if (!impersonando) return null;
+
+    return (
+        <div className="flex items-center justify-center gap-3 bg-amber-500 px-4 py-2 text-center text-sm font-medium text-amber-950 print:hidden">
+            <span>
+                Estás viendo el sistema como este usuario (sesión iniciada por {impersonando.impersonador}).
+            </span>
+            <Link
+                href={route('impersonar.salir')}
+                method="post"
+                as="button"
+                className="rounded-md bg-amber-950/10 px-2 py-1 font-semibold hover:bg-amber-950/20"
+            >
+                Volver a mi cuenta
+            </Link>
+        </div>
+    );
+}
+
 export default function AuthenticatedLayout({ header, children }) {
-    const user = usePage().props.auth.user;
+    const { auth, impersonando } = usePage().props;
+    const user = auth.user;
     const [menuAbierto, setMenuAbierto] = useState(false);
 
     const links = (LINKS_POR_ROL[user.role] ?? docenteLinks).filter((link) => route().has(link.name));
 
     return (
         <div className="min-h-screen bg-slate-50 print:bg-white dark:bg-slate-950">
+            <BannerImpersonacion impersonando={impersonando} />
+
             {/* Sidebar de escritorio */}
             <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-slate-200 bg-white lg:flex print:hidden dark:border-slate-800 dark:bg-slate-900">
                 <SidebarContent links={links} />

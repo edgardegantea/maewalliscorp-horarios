@@ -29,7 +29,10 @@ class UsuarioController extends Controller
             ->orderBy('name')
             ->get();
 
-        $usuarios->each(fn (User $u) => $u->puede_editar = $u->puedeSerEditadoPor($request->user()));
+        $usuarios->each(function (User $u) use ($request) {
+            $u->puede_editar = $u->puedeSerEditadoPor($request->user());
+            $u->puede_impersonar = $u->puedeSerImpersonadoPor($request->user());
+        });
 
         return Inertia::render('Admin/Usuarios/Index', [
             'usuarios' => $usuarios,
@@ -60,7 +63,13 @@ class UsuarioController extends Controller
             'name' => $datos['name'],
             'username' => $datos['username'],
             'email' => $datos['email'] ?? null,
-            ...(filled($datos['password'] ?? null) ? ['password' => Hash::make($datos['password'])] : []),
+            // Al asignarle una contraseña, el propio admin la conoce: se
+            // marca como temporal para forzar que el usuario la cambie por
+            // una propia (y confirme su email) en su próximo acceso.
+            ...(filled($datos['password'] ?? null) ? [
+                'password' => Hash::make($datos['password']),
+                'password_temporal' => true,
+            ] : []),
         ]);
 
         $usuario->roles()->sync($datos['roles'] ?? []);

@@ -63,16 +63,28 @@ export default function Index({ usuarios, filtros }) {
                                             : usuario.grupos_usuarios.map((g) => g.nombre).join(', ')}
                                     </TD>
                                     <TD align="right">
-                                        {usuario.puede_editar ? (
-                                            <Link
-                                                href={route('admin.usuarios.edit', usuario.id)}
-                                                className="font-medium text-indigo-600 hover:text-indigo-800"
-                                            >
-                                                Editar
-                                            </Link>
-                                        ) : (
-                                            <span className="text-slate-400 dark:text-slate-600">—</span>
-                                        )}
+                                        <div className="flex justify-end gap-3">
+                                            {usuario.puede_editar ? (
+                                                <Link
+                                                    href={route('admin.usuarios.edit', usuario.id)}
+                                                    className="font-medium text-indigo-600 hover:text-indigo-800"
+                                                >
+                                                    Editar
+                                                </Link>
+                                            ) : (
+                                                <span className="text-slate-400 dark:text-slate-600">—</span>
+                                            )}
+                                            {usuario.puede_impersonar && (
+                                                <Link
+                                                    href={route('admin.usuarios.impersonar', usuario.id)}
+                                                    method="post"
+                                                    as="button"
+                                                    className="font-medium text-amber-600 hover:text-amber-800"
+                                                >
+                                                    Iniciar sesión como
+                                                </Link>
+                                            )}
+                                        </div>
                                     </TD>
                                 </TR>
                             ))}

@@ -17,6 +17,7 @@ use App\Http\Controllers\Admin\DocenteCarreraController;
 use App\Http\Controllers\Admin\DocenteController;
 use App\Http\Controllers\Admin\GrupoController;
 use App\Http\Controllers\Admin\GrupoUsuarioController;
+use App\Http\Controllers\Admin\ImpersonacionController;
 use App\Http\Controllers\Admin\PeriodoEscolarController;
 use App\Http\Controllers\Admin\ReporteController;
 use App\Http\Controllers\Admin\RoleController;
@@ -67,6 +68,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('usuarios', [UsuarioController::class, 'index'])->name('usuarios.index');
         Route::get('usuarios/{usuario}/editar', [UsuarioController::class, 'edit'])->name('usuarios.edit');
         Route::put('usuarios/{usuario}', [UsuarioController::class, 'update'])->name('usuarios.update');
+        Route::post('usuarios/{usuario}/impersonar', [ImpersonacionController::class, 'iniciar'])->name('usuarios.impersonar');
     });
 
     // Recursos de carrera: administrador general o coordinador de la(s) carrera(s)
