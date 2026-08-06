@@ -13,7 +13,13 @@ class AsignarRolesGruposRequest extends FormRequest
 
     public function rules(): array
     {
+        $usuarioId = $this->route('usuario')?->id;
+
         return [
+            'name' => ['required', 'string', 'max:255'],
+            'username' => ['required', 'string', 'max:255', 'alpha_dash', 'unique:users,username,'.$usuarioId],
+            'email' => ['nullable', 'email', 'max:255', 'unique:users,email,'.$usuarioId],
+            'password' => ['nullable', 'string', 'min:8'],
             'roles' => ['array'],
             'roles.*' => ['integer', 'exists:roles,id'],
             'grupos' => ['array'],

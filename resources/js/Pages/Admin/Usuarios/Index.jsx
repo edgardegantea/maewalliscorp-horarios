@@ -63,12 +63,16 @@ export default function Index({ usuarios, filtros }) {
                                             : usuario.grupos_usuarios.map((g) => g.nombre).join(', ')}
                                     </TD>
                                     <TD align="right">
-                                        <Link
-                                            href={route('admin.usuarios.edit', usuario.id)}
-                                            className="font-medium text-indigo-600 hover:text-indigo-800"
-                                        >
-                                            Editar
-                                        </Link>
+                                        {usuario.puede_editar ? (
+                                            <Link
+                                                href={route('admin.usuarios.edit', usuario.id)}
+                                                className="font-medium text-indigo-600 hover:text-indigo-800"
+                                            >
+                                                Editar
+                                            </Link>
+                                        ) : (
+                                            <span className="text-slate-400 dark:text-slate-600">—</span>
+                                        )}
                                     </TD>
                                 </TR>
                             ))}

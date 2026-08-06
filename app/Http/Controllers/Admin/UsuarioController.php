@@ -10,6 +10,7 @@ use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -28,15 +29,17 @@ class UsuarioController extends Controller
             ->orderBy('name')
             ->get();
 
+        $usuarios->each(fn (User $u) => $u->puede_editar = $u->puedeSerEditadoPor($request->user()));
+
         return Inertia::render('Admin/Usuarios/Index', [
             'usuarios' => $usuarios,
             'filtros' => ['q' => $busqueda],
         ]);
     }
 
-    public function edit(User $usuario): Response
+    public function edit(Request $request, User $usuario): Response
     {
-        abort_if($usuario->isSuperAdmin(), 404);
+        abort_unless($usuario->puedeSerEditadoPor($request->user()), 404);
 
         $usuario->load('roles', 'gruposUsuarios');
 
@@ -49,14 +52,21 @@ class UsuarioController extends Controller
 
     public function update(AsignarRolesGruposRequest $request, User $usuario): RedirectResponse
     {
-        abort_if($usuario->isSuperAdmin(), 404);
+        abort_unless($usuario->puedeSerEditadoPor($request->user()), 404);
 
         $datos = $request->validated();
+
+        $usuario->update([
+            'name' => $datos['name'],
+            'username' => $datos['username'],
+            'email' => $datos['email'] ?? null,
+            ...(filled($datos['password'] ?? null) ? ['password' => Hash::make($datos['password'])] : []),
+        ]);
 
         $usuario->roles()->sync($datos['roles'] ?? []);
         $usuario->gruposUsuarios()->sync($datos['grupos'] ?? []);
 
-        RegistroActividad::registrar($request->user()->id, 'actualizar', 'usuario', $usuario->id, "Actualizó roles/grupos de {$usuario->name}");
+        RegistroActividad::registrar($request->user()->id, 'actualizar', 'usuario', $usuario->id, "Actualizó datos/roles/grupos de {$usuario->name}");
 
         return redirect()->route('admin.usuarios.index')->with('success', 'Usuario actualizado.');
     }

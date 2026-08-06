@@ -117,6 +117,25 @@ class User extends Authenticatable
     }
 
     /**
+     * Regla de edición de la pantalla Admin/Usuarios: nadie edita a un
+     * superadmin salvo él mismo; al admin sólo lo edita él mismo o un
+     * superadmin; cualquier otro usuario lo puede editar quien llegue a esta
+     * pantalla (admin o superadmin, ya filtrado por el middleware de rutas).
+     */
+    public function puedeSerEditadoPor(User $editor): bool
+    {
+        if ($this->isSuperAdmin()) {
+            return $editor->is($this);
+        }
+
+        if ($this->isAdmin()) {
+            return $editor->is($this) || $editor->isSuperAdmin();
+        }
+
+        return true;
+    }
+
+    /**
      * IDs de carreras a las que este usuario tiene acceso administrativo.
      * Devuelve null para el admin (acceso a todas, sin filtrar por IDs).
      */

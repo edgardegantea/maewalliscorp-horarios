@@ -1,6 +1,7 @@
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
+import TextInput from '@/Components/TextInput';
 import Card from '@/Components/ui/Card';
 import PageHeader from '@/Components/ui/PageHeader';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
@@ -8,6 +9,10 @@ import { Head, useForm } from '@inertiajs/react';
 
 export default function Edit({ usuario, roles, grupos }) {
     const { data, setData, put, processing, errors } = useForm({
+        name: usuario.name ?? '',
+        username: usuario.username ?? '',
+        email: usuario.email ?? '',
+        password: '',
         roles: usuario.roles.map((r) => r.id),
         grupos: usuario.grupos_usuarios.map((g) => g.id),
     });
@@ -42,6 +47,58 @@ export default function Edit({ usuario, roles, grupos }) {
 
                 <Card>
                     <form onSubmit={submit} className="space-y-6">
+                        <div className="grid gap-4 sm:grid-cols-2">
+                            <div>
+                                <InputLabel htmlFor="name" value="Nombre" />
+                                <TextInput
+                                    id="name"
+                                    className="mt-1 block w-full"
+                                    value={data.name}
+                                    onChange={(e) => setData('name', e.target.value)}
+                                    required
+                                />
+                                <InputError message={errors.name} className="mt-2" />
+                            </div>
+
+                            <div>
+                                <InputLabel htmlFor="username" value="Usuario" />
+                                <TextInput
+                                    id="username"
+                                    className="mt-1 block w-full"
+                                    value={data.username}
+                                    onChange={(e) => setData('username', e.target.value)}
+                                    required
+                                />
+                                <InputError message={errors.username} className="mt-2" />
+                            </div>
+
+                            <div>
+                                <InputLabel htmlFor="email" value="Correo electrónico" />
+                                <TextInput
+                                    id="email"
+                                    type="email"
+                                    className="mt-1 block w-full"
+                                    value={data.email}
+                                    onChange={(e) => setData('email', e.target.value)}
+                                />
+                                <InputError message={errors.email} className="mt-2" />
+                            </div>
+
+                            <div>
+                                <InputLabel htmlFor="password" value="Nueva contraseña" />
+                                <TextInput
+                                    id="password"
+                                    type="password"
+                                    className="mt-1 block w-full"
+                                    value={data.password}
+                                    onChange={(e) => setData('password', e.target.value)}
+                                    placeholder="Dejar en blanco para no cambiarla"
+                                    autoComplete="new-password"
+                                />
+                                <InputError message={errors.password} className="mt-2" />
+                            </div>
+                        </div>
+
                         <div>
                             <InputLabel value="Roles personalizados" />
                             <div className="mt-2 space-y-1">
