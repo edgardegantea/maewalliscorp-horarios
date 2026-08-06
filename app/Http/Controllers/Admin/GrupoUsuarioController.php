@@ -24,7 +24,7 @@ class GrupoUsuarioController extends Controller
     public function create(): Response
     {
         return Inertia::render('Admin/GruposUsuarios/Create', [
-            'usuarios' => User::orderBy('name')->get(['id', 'name', 'username']),
+            'usuarios' => User::visiblesParaGestion()->orderBy('name')->get(['id', 'name', 'username']),
         ]);
     }
 
@@ -50,7 +50,7 @@ class GrupoUsuarioController extends Controller
 
         return Inertia::render('Admin/GruposUsuarios/Edit', [
             'grupo' => $grupoUsuario,
-            'usuarios' => User::orderBy('name')->get(['id', 'name', 'username']),
+            'usuarios' => User::visiblesParaGestion()->orderBy('name')->get(['id', 'name', 'username']),
         ]);
     }
 

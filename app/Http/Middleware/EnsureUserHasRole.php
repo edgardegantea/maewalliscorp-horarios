@@ -21,6 +21,10 @@ class EnsureUserHasRole
 
         abort_unless($usuario, 403);
 
+        if ($usuario->isSuperAdmin()) {
+            return $next($request);
+        }
+
         $coincideRolBase = in_array($usuario->role->value, $roles, true);
         $coincideRolPersonalizado = $usuario->roles->pluck('slug')->intersect($roles)->isNotEmpty();
 

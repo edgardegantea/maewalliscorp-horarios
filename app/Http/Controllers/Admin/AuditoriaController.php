@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\RegistroActividad;
 use App\Models\User;
@@ -18,6 +19,7 @@ class AuditoriaController extends Controller
         $entidad = $request->string('entidad')->toString() ?: null;
 
         $registros = RegistroActividad::with('usuario:id,name')
+            ->whereDoesntHave('usuario', fn ($q) => $q->where('role', UserRole::SuperAdmin))
             ->when($usuarioId, fn ($q) => $q->where('usuario_id', $usuarioId))
             ->when($accion, fn ($q) => $q->where('accion', $accion))
             ->when($entidad, fn ($q) => $q->where('entidad', $entidad))
@@ -27,7 +29,7 @@ class AuditoriaController extends Controller
 
         return Inertia::render('Admin/Auditoria/Index', [
             'registros' => $registros,
-            'usuarios' => User::orderBy('name')->get(['id', 'name']),
+            'usuarios' => User::visiblesParaGestion()->orderBy('name')->get(['id', 'name']),
             'entidades' => RegistroActividad::whereNotNull('entidad')->distinct()->orderBy('entidad')->pluck('entidad'),
             'filtros' => [
                 'usuario' => $usuarioId,

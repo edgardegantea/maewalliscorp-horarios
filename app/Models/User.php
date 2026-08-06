@@ -48,7 +48,7 @@ class User extends Authenticatable
      */
     public function puedeUsarDosFactores(): bool
     {
-        return $this->isAdmin() || $this->isCoordinador();
+        return $this->isSuperAdmin() || $this->isAdmin() || $this->isCoordinador();
     }
 
     public function docente(): HasOne
@@ -82,13 +82,23 @@ class User extends Authenticatable
      */
     public function tienePermiso(string $clave): bool
     {
-        if ($this->isAdmin()) {
+        if ($this->isSuperAdmin() || $this->isAdmin()) {
             return true;
         }
 
         return $this->roles->contains(
             fn (Role $role) => $role->permissions->contains('clave', $clave)
         );
+    }
+
+    /**
+     * El superadministrador está por encima del admin: control total del
+     * sistema y, a diferencia de éste, invisible para todos los demás roles
+     * (incluido el propio admin). Ver User::scopeVisiblesParaGestion().
+     */
+    public function isSuperAdmin(): bool
+    {
+        return $this->role === UserRole::SuperAdmin;
     }
 
     public function isAdmin(): bool
@@ -112,10 +122,20 @@ class User extends Authenticatable
      */
     public function carreraIdsAccesibles(): ?array
     {
-        if ($this->isAdmin()) {
+        if ($this->isSuperAdmin() || $this->isAdmin()) {
             return null;
         }
 
         return $this->carrerasCoordinadas()->pluck('carreras.id')->all();
+    }
+
+    /**
+     * Excluye a los superadministradores de cualquier listado de usuarios
+     * usado por pantallas de gestión (usuarios, grupos de usuarios,
+     * auditoría), para que ningún otro rol —incluido el admin— pueda verlos.
+     */
+    public function scopeVisiblesParaGestion(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
+    {
+        return $query->where('role', '!=', UserRole::SuperAdmin);
     }
 }

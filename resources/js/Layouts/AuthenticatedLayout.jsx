@@ -40,6 +40,7 @@ const docenteLinks = [
 ];
 
 const LINKS_POR_ROL = {
+    superadmin: adminLinks,
     admin: adminLinks,
     coordinador: coordinadorLinks,
     docente: docenteLinks,

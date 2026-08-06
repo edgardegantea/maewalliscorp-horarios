@@ -20,6 +20,7 @@ class UsuarioController extends Controller
         $busqueda = $request->string('q')->toString() ?: null;
 
         $usuarios = User::with(['roles', 'gruposUsuarios'])
+            ->visiblesParaGestion()
             ->when($busqueda, fn ($q) => $q->where(fn ($q2) => $q2
                 ->where('name', 'ilike', "%{$busqueda}%")
                 ->orWhere('username', 'ilike', "%{$busqueda}%")
@@ -35,6 +36,8 @@ class UsuarioController extends Controller
 
     public function edit(User $usuario): Response
     {
+        abort_if($usuario->isSuperAdmin(), 404);
+
         $usuario->load('roles', 'gruposUsuarios');
 
         return Inertia::render('Admin/Usuarios/Edit', [
@@ -46,6 +49,8 @@ class UsuarioController extends Controller
 
     public function update(AsignarRolesGruposRequest $request, User $usuario): RedirectResponse
     {
+        abort_if($usuario->isSuperAdmin(), 404);
+
         $datos = $request->validated();
 
         $usuario->roles()->sync($datos['roles'] ?? []);

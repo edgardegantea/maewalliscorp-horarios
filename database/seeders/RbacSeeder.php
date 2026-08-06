@@ -68,7 +68,10 @@ class RbacSeeder extends Seeder
             ['nombre' => 'Docente', 'es_sistema' => true]
         );
 
-        User::query()->each(function (User $user) use ($roleAdmin, $roleCoordinador, $roleDocente) {
+        // El superadministrador no participa del RBAC de roles personalizados
+        // (su acceso total viene de isSuperAdmin(), no de la tabla `roles`) y
+        // se excluye a propósito para que ninguna fila lo delate ahí.
+        User::query()->where('role', '!=', UserRole::SuperAdmin)->each(function (User $user) use ($roleAdmin, $roleCoordinador, $roleDocente) {
             $role = match ($user->role) {
                 UserRole::Admin => $roleAdmin,
                 UserRole::Coordinador => $roleCoordinador,

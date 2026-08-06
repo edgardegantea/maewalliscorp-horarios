@@ -24,6 +24,7 @@ const accesosDocente = [
 ];
 
 const ACCESOS_POR_ROL = {
+    superadmin: accesosAdmin,
     admin: accesosAdmin,
     coordinador: accesosCoordinador,
     docente: accesosDocente,
@@ -31,7 +32,7 @@ const ACCESOS_POR_ROL = {
 
 export default function Dashboard({ alertas }) {
     const user = usePage().props.auth.user;
-    const esAdmin = user.role === 'admin';
+    const esAdmin = user.role === 'admin' || user.role === 'superadmin';
     const accesos = (ACCESOS_POR_ROL[user.role] ?? accesosDocente).filter((a) => route().has(a.name));
 
     return (

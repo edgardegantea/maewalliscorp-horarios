@@ -21,7 +21,7 @@ class DashboardController extends Controller
         $usuario = $request->user();
         $alertas = null;
 
-        if ($usuario->isAdmin() || $usuario->isCoordinador()) {
+        if ($usuario->isSuperAdmin() || $usuario->isAdmin() || $usuario->isCoordinador()) {
             $alertas = $this->construirAlertas($request);
         }
 

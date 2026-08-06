@@ -9,7 +9,7 @@ import UpdateProfileInformationForm from './Partials/UpdateProfileInformationFor
 
 export default function Edit({ mustVerifyEmail, status, twoFactorEnabled, twoFactorPendiente }) {
     const user = usePage().props.auth.user;
-    const puedeUsarDosFactores = user.role === 'admin' || user.role === 'coordinador';
+    const puedeUsarDosFactores = user.role === 'superadmin' || user.role === 'admin' || user.role === 'coordinador';
     const puedeEliminarCuenta = user.role !== 'docente';
 
     return (
